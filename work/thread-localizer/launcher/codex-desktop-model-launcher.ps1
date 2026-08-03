@@ -41,6 +41,23 @@ function Show-LauncherMessage {
     )
 }
 
+function Show-HandoffStartedNotice {
+    param([string]$TargetProvider)
+
+    $providerName = if ($TargetProvider -eq 'gpt') { 'GPT' } else { 'DeepSeek' }
+    try {
+        $popup = New-Object -ComObject WScript.Shell
+        [void]$popup.Popup(
+            "正在准备交接到 $providerName。完成后会自动打开 Codex，重复点击不会创建新任务。",
+            2,
+            'Codex 任务交接',
+            64
+        )
+    } catch {
+        # The handoff must still proceed if Windows cannot display the notice.
+    }
+}
+
 function Find-CodexExecutable {
     $binRoot = Join-Path $env:LOCALAPPDATA 'OpenAI\Codex\bin'
     if (Test-Path -LiteralPath $binRoot) {
@@ -313,18 +330,33 @@ function Wait-For-CodexToExit {
     }
 }
 
-$launcherMutex = $null
-$launcherMutexAcquired = $false
+$requestMutex = $null
+$requestMutexAcquired = $false
+$handoffMutex = $null
+$handoffMutexAcquired = $false
 
 try {
     if (-not $ValidateOnly) {
-        $launcherMutex = [System.Threading.Mutex]::new($false, 'Local\CodexDesktopProviderHandoff')
+        $requestMutexName = "Local\CodexDesktopProviderRequest-$Provider"
+        $requestMutex = [System.Threading.Mutex]::new($false, $requestMutexName)
         try {
-            $launcherMutexAcquired = $launcherMutex.WaitOne([TimeSpan]::FromMinutes(30))
+            $requestMutexAcquired = $requestMutex.WaitOne(0)
         } catch [System.Threading.AbandonedMutexException] {
-            $launcherMutexAcquired = $true
+            $requestMutexAcquired = $true
         }
-        if (-not $launcherMutexAcquired) {
+        if (-not $requestMutexAcquired) {
+            exit 0
+        }
+
+        Show-HandoffStartedNotice -TargetProvider $Provider
+
+        $handoffMutex = [System.Threading.Mutex]::new($false, 'Local\CodexDesktopProviderHandoff')
+        try {
+            $handoffMutexAcquired = $handoffMutex.WaitOne([TimeSpan]::FromMinutes(30))
+        } catch [System.Threading.AbandonedMutexException] {
+            $handoffMutexAcquired = $true
+        }
+        if (-not $handoffMutexAcquired) {
             throw '等待上一轮模型交接超过 30 分钟。Codex 未启动，请确认没有遗留的交接进程后重试。'
         }
     }
@@ -405,10 +437,16 @@ Codex 桌面应用仍在运行。
     }
     exit 1
 } finally {
-    if ($launcherMutexAcquired -and $null -ne $launcherMutex) {
-        $launcherMutex.ReleaseMutex()
+    if ($handoffMutexAcquired -and $null -ne $handoffMutex) {
+        $handoffMutex.ReleaseMutex()
     }
-    if ($null -ne $launcherMutex) {
-        $launcherMutex.Dispose()
+    if ($null -ne $handoffMutex) {
+        $handoffMutex.Dispose()
+    }
+    if ($requestMutexAcquired -and $null -ne $requestMutex) {
+        $requestMutex.ReleaseMutex()
+    }
+    if ($null -ne $requestMutex) {
+        $requestMutex.Dispose()
     }
 }

@@ -10,6 +10,8 @@ Normal GPT entry:
 DeepSeek-to-GPT handoff entry:
   Use the desktop shortcut named 任务交接GPT. It waits for the whole handoff
   batch to finish and opens Codex only when no task is blocked or failed.
+  The first click shows a short notice; repeated clicks while it is working are
+  ignored and cannot queue another handoff.
 
 The DeepSeek shortcut and the standard taskbar Codex icon open the same
 installed Codex desktop application. They do not open a terminal task picker.

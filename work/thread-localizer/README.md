@@ -31,6 +31,12 @@ still handing tasks back to OpenAI after the app closes, the GPT handoff
 shortcut waits for that work to finish instead of starting a second handoff or
 opening an empty Codex window.
 
+Each provider entry also holds its own non-queuing request lock. The first
+click immediately shows a short handoff notice and owns that provider request
+until it finishes. Additional clicks on the same shortcut exit silently, so
+they cannot queue another fork, create duplicate conversations, or show a
+second Codex window later.
+
 The legacy single-task manifest remains as migration history. The active
 single-task baton is imported once into the multi-task manifest and is not
 forked merely because of the import.
