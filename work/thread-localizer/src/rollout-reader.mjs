@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { CODEX_HOME, SESSION_INDEX_PATH, SOURCE_THREAD_ID } from "./constants.mjs";
+import { CODEX_HOME, SESSION_INDEX_PATH } from "./constants.mjs";
 import { readJsonl, countVisibleMessages, pathExists } from "./utils.mjs";
 
 async function walkJsonl(root) {
@@ -30,7 +30,8 @@ async function rolloutFromSessionIndex(threadId) {
   return null;
 }
 
-export async function findRolloutPath(threadId = SOURCE_THREAD_ID) {
+export async function findRolloutPath(threadId) {
+  if (!threadId) throw new Error("查找 rollout 时必须提供任务 ID");
   const indexed = await rolloutFromSessionIndex(threadId);
   if (indexed) return indexed;
   const roots = [path.join(CODEX_HOME, "sessions"), path.join(CODEX_HOME, "archived_sessions")];

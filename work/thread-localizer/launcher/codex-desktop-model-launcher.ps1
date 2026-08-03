@@ -102,11 +102,13 @@ function Invoke-BatchHandoff {
     $handoffTimestamp = Get-Date -Format 'yyyyMMdd-HHmmss-fff'
     $stdoutPath = Join-Path $handoffLogRoot "handoff.$handoffTimestamp.$TargetProvider.stdout.json"
     $stderrPath = Join-Path $handoffLogRoot "handoff.$handoffTimestamp.$TargetProvider.stderr.txt"
+    $engineProvider = if ($TargetProvider -eq 'gpt') { 'openai' } else { $TargetProvider }
+
     $arguments = @(
         $handoffCliPath,
         'batch-handoff',
         '--execute',
-        '--target-provider', $TargetProvider
+        '--target-provider', $engineProvider
     )
     $process = Start-Process -FilePath (Find-NodeExecutable) `
         -ArgumentList $arguments `

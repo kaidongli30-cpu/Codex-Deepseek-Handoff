@@ -1,11 +1,8 @@
 import { createAppServerClient } from "./appserver-client.mjs";
-import { DEFAULT_PROVIDER, DEEPSEEK_MODEL, PROJECT_CWD, SOURCE_THREAD_ID } from "./constants.mjs";
-import { buildMigrationPlan, defaultMirrorName, manifestProvider, readManifest } from "./migration-plan.mjs";
-import { migrateOne } from "./migrate-one.mjs";
+import { DEFAULT_PROVIDER, DEEPSEEK_MODEL, PROJECT_CWD } from "./constants.mjs";
 import { loadAndValidateSchema } from "./schema-guard.mjs";
 import { parseArgs } from "./utils.mjs";
 import { verifyThread } from "./verify-mirror.mjs";
-import { buildSyncPlan, syncOne } from "./sync-engine.mjs";
 import { handoffOne, rollingHandoff } from "./handoff-engine.mjs";
 import { batchHandoff, discoverLocalTasks } from "./batch-handoff-engine.mjs";
 
@@ -17,7 +14,7 @@ async function main() {
   const { positionals, options } = parseArgs(process.argv.slice(2));
   const command = positionals[0] || "help";
   if (command === "help") {
-    process.stdout.write("用法: node src/cli.mjs schema-check | batch-inventory | batch-handoff-dry-run --target-provider P [--only-task-id ID] | batch-handoff --execute --target-provider P [--only-task-id ID] | handoff-dry-run ... | verify ...\n");
+    process.stdout.write("用法: node src/cli.mjs schema-check | batch-inventory | batch-handoff-dry-run --target-provider P [--only-task-id ID] | batch-handoff --execute --target-provider P [--only-task-id ID] | handoff-dry-run ... | rolling-handoff-dry-run ... | verify ...\n");
     return;
   }
   if (command === "schema-check") {
@@ -66,74 +63,6 @@ async function main() {
       targetModel: options["target-model"] || (targetProvider === "deepseek" ? DEEPSEEK_MODEL : "gpt-5.6-sol"),
     }));
     return;
-  }
-  if (command === "sync-dry-run") {
-    const sourceThreadId = options["source-thread-id"];
-    const targetThreadId = options["target-thread-id"];
-    const targetProvider = options["target-provider"] || DEFAULT_PROVIDER;
-    const targetModel = options["target-model"] || (targetProvider === "deepseek" ? DEEPSEEK_MODEL : null);
-    const { plan } = await buildSyncPlan({ sourceThreadId, targetThreadId, targetProvider, targetModel });
-    print({ type: "sync-dry-run", plan });
-    return;
-  }
-  if (command === "sync") {
-    throw new Error("增量注入同步已冻结：thread/inject_items 不会生成桌面可显示的回合，不能满足上下文互相显示。仅保留 sync-dry-run 用于诊断。");
-    /* c8 ignore start -- retained as experiment history, intentionally unreachable */
-    if (options.execute !== true && options.execute !== "true") throw new Error("sync 必须显式带 --execute");
-    const targetProvider = options["target-provider"] || DEFAULT_PROVIDER;
-    print(await syncOne({
-      execute: true,
-      sourceThreadId: options["source-thread-id"],
-      targetThreadId: options["target-thread-id"],
-      targetProvider,
-      targetModel: options["target-model"] || (targetProvider === "deepseek" ? DEEPSEEK_MODEL : null),
-    }));
-    return;
-    /* c8 ignore stop */
-  }
-  if (command === "dry-run") {
-    const provider = options.provider || DEFAULT_PROVIDER;
-    const manifest = await readManifest();
-    const repairVisibility = options["repair-visibility"] === true || options["repair-visibility"] === "true";
-    const existingProviderEntry = manifest.migrations?.find((entry) => (
-      entry.sourceThreadId === SOURCE_THREAD_ID && manifestProvider(entry) === provider
-    ));
-    const forkThreadId = options["fork-thread-id"] || (repairVisibility
-      ? existingProviderEntry?.mirrorThreadId
-      : (
-      provider === "deepseek"
-        ? manifest.migrations?.find((entry) => entry.sourceThreadId === SOURCE_THREAD_ID && manifestProvider(entry) === DEFAULT_PROVIDER)?.mirrorThreadId
-        : undefined
-      ));
-    print(await buildMigrationPlan({
-      targetProvider: provider,
-      targetModel: options.model || (provider === "deepseek" ? DEEPSEEK_MODEL : null),
-      mirrorName: options.name || defaultMirrorName(provider),
-      forkThreadId,
-      repairVisibility,
-    }));
-    return;
-  }
-  if (command === "migrate" || command === "repair-visibility") {
-    throw new Error("静态镜像创建已冻结：它不能实现 GPT 与 DeepSeek 共用同一任务。请使用 provider-handoff 实验流程。");
-    /* c8 ignore start -- retained only as migration history, intentionally unreachable */
-    if (options.execute !== true && options.execute !== "true") {
-      throw new Error("迁移命令必须显式带 --execute；不带该参数只应运行 dry-run");
-    }
-    const provider = options.provider || DEFAULT_PROVIDER;
-    const repairVisibility = command === "repair-visibility"
-      || options["repair-visibility"] === true
-      || options["repair-visibility"] === "true";
-    print(await migrateOne({
-      execute: true,
-      targetProvider: provider,
-      targetModel: options.model || (provider === "deepseek" ? DEEPSEEK_MODEL : null),
-      mirrorName: options.name || defaultMirrorName(provider),
-      forkThreadId: options["fork-thread-id"] || null,
-      repairVisibility,
-    }));
-    return;
-    /* c8 ignore stop */
   }
   if (command === "verify") {
     const threadId = options["thread-id"] || options.threadId;
