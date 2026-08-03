@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "managedProviders": {
+    "openai": {
+      "activeModel": "gpt-5.6-sol",
+      "modelPolicy": "preserve-existing",
+      "forcedLoginMethod": "chatgpt"
+    },
+    "deepseek": {
+      "activeModel": "deepseek-v4-flash",
+      "modelPolicy": "global",
+      "forcedLoginMethod": "api"
+    }
+  },
+  "discovery": {
+    "autoEnroll": true,
+    "includeArchived": false,
+    "excludeThreadIds": [],
+    "excludeNamePrefixes": [
+      "[交接测试",
+      "[本地镜像]",
+      "[DeepSeek镜像]"
+    ]
+  },
+  "projectMappings": {}
+}

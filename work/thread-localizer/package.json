@@ -1,0 +1,21 @@
+{
+  "name": "codex-thread-localizer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Hand off local Codex desktop tasks between OpenAI and DeepSeek through the app-server protocol.",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "schema-check": "node src/cli.mjs schema-check",
+    "batch-inventory": "node src/cli.mjs batch-inventory",
+    "batch-dry-run-deepseek": "node src/cli.mjs batch-handoff-dry-run --target-provider deepseek",
+    "batch-dry-run-openai": "node src/cli.mjs batch-handoff-dry-run --target-provider openai",
+    "dry-run": "node src/cli.mjs dry-run",
+    "migrate": "node src/cli.mjs migrate --execute",
+    "migrate-deepseek": "node src/cli.mjs migrate --execute --provider deepseek --model deepseek-v4-flash",
+    "repair-deepseek-visibility": "node src/cli.mjs repair-visibility --execute --provider deepseek --model deepseek-v4-flash",
+    "verify": "node src/cli.mjs verify"
+  }
+}

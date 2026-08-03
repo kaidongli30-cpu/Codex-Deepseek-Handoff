@@ -1,0 +1,48 @@
+# OS and editor noise
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
+
+# Node / package-manager generated files
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Credentials and private local material
+**/auth.json
+**/.env
+**/.env.*
+!**/.env.example
+**/*.dpapi
+**/*.pem
+**/*.p12
+**/*.pfx
+**/*.secret
+**/*secret*
+
+# Codex / task runtime state (keep source and settings, exclude local state)
+outputs/
+work/model-switcher/preflight-home/
+work/thread-localizer/reports/
+work/thread-localizer/data/backups/
+work/thread-localizer/data/*.sqlite
+work/thread-localizer/data/*.sqlite-*
+work/thread-localizer/data/*.db
+work/thread-localizer/data/*.db-*
+work/thread-localizer/data/*.log
+work/thread-localizer/data/*.jsonl
+work/thread-localizer/data/*.tmp
+work/thread-localizer/data/*manifest.json
+work/thread-localizer/data/cleanup-dry-run*.json
+
+# Generated snapshots and temporary files anywhere in the project
+*.bak
+*.backup
+*.orig
+*.tmp
+*.swp
+*.lock
