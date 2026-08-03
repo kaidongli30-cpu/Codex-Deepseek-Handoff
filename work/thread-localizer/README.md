@@ -23,7 +23,13 @@ model). A provider switch processes every managed task independently:
 9. atomically update the task's manifest entry.
 
 A failure or active turn blocks only that task. Other tasks continue through
-the pipeline, and the launcher shows a summary plus the result report path.
+the pipeline. The desktop launcher treats any blocked or failed task as a
+closed gate: it shows the result report path and does not open Codex.
+
+The launcher also holds a per-user handoff lock. If the DeepSeek launcher is
+still handing tasks back to OpenAI after the app closes, the GPT handoff
+shortcut waits for that work to finish instead of starting a second handoff or
+opening an empty Codex window.
 
 The legacy single-task manifest remains as migration history. The active
 single-task baton is imported once into the multi-task manifest and is not
@@ -74,6 +80,13 @@ node src/cli.mjs batch-handoff --execute --target-provider openai
 
 Use `--only-task-id <stable-or-current-id>` for a one-task acceptance test.
 Dry-run and execution reports are written under `reports/`.
+
+## Desktop entries
+
+- Use the DeepSeek shortcut when switching from GPT to DeepSeek.
+- Use the desktop `任务交接GPT` shortcut when switching from DeepSeek to GPT.
+- The standard taskbar Codex icon remains a direct GPT entry. Use it only when
+  the previous session was already GPT and no provider handoff is pending.
 
 ## Safety rules
 

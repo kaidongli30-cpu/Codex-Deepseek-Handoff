@@ -130,15 +130,15 @@ function Invoke-BatchHandoff {
     }
     $result = Get-Content -LiteralPath $stdoutPath -Raw -Encoding UTF8 | ConvertFrom-Json
     if ($result.summary.failed -gt 0 -or $result.summary.blocked -gt 0) {
-        Show-LauncherMessage -Title '部分任务未完成交接' -Icon Warning -Text @"
-模型配置已切换到 $TargetProvider，但部分任务没有完成交接。
+        throw @"
+任务尚未全部交接到 $TargetProvider，因此 Codex 不会启动。
 
 成功：$($result.summary.handedOff)
 无需交接：$($result.summary.noop)
 阻塞：$($result.summary.blocked)
 失败：$($result.summary.failed)
 
-其他任务不受影响。详细报告：
+请根据详细报告处理后，再点击相应的交接快捷方式：
 $($result.resultPath)
 "@
     }
@@ -313,7 +313,22 @@ function Wait-For-CodexToExit {
     }
 }
 
+$launcherMutex = $null
+$launcherMutexAcquired = $false
+
 try {
+    if (-not $ValidateOnly) {
+        $launcherMutex = [System.Threading.Mutex]::new($false, 'Local\CodexDesktopProviderHandoff')
+        try {
+            $launcherMutexAcquired = $launcherMutex.WaitOne([TimeSpan]::FromMinutes(30))
+        } catch [System.Threading.AbandonedMutexException] {
+            $launcherMutexAcquired = $true
+        }
+        if (-not $launcherMutexAcquired) {
+            throw '等待上一轮模型交接超过 30 分钟。Codex 未启动，请确认没有遗留的交接进程后重试。'
+        }
+    }
+
     foreach ($required in @($configPath, $modelsPath, $keyHelperPath, $handoffSettingsPath)) {
         if (-not (Test-Path -LiteralPath $required)) { throw "缺少必需文件：$required" }
     }
@@ -380,7 +395,7 @@ Codex 桌面应用仍在运行。
         }
     } catch {
         Copy-Item -LiteralPath $backupPath -Destination $configPath -Force
-        throw "桌面 Codex 启动失败，配置已自动恢复。$($_.Exception.Message)"
+        throw "任务交接或桌面 Codex 启动失败，配置已自动恢复。$($_.Exception.Message)"
     }
 } catch {
     if ($ValidateOnly) {
@@ -389,4 +404,11 @@ Codex 桌面应用仍在运行。
         Show-LauncherMessage -Title 'Codex 模型切换失败' -Icon Error -Text $_.Exception.Message
     }
     exit 1
+} finally {
+    if ($launcherMutexAcquired -and $null -ne $launcherMutex) {
+        $launcherMutex.ReleaseMutex()
+    }
+    if ($null -ne $launcherMutex) {
+        $launcherMutex.Dispose()
+    }
 }
