@@ -178,6 +178,7 @@ function New-ModeBlock {
         $lines.Add("model = `"$(Get-ActiveModel 'deepseek')`"")
         $lines.Add('model_provider = "deepseek"')
         $lines.Add('model_reasoning_effort = "max"')
+        $lines.Add('web_search = "live"')
         $lines.Add("model_catalog_json = `"$catalog`"")
         $lines.Add('forced_login_method = "api"')
     }
