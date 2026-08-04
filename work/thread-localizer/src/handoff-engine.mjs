@@ -14,6 +14,7 @@ import {
 import { findRolloutPath } from "./rollout-reader.mjs";
 import { loadAndValidateSchema } from "./schema-guard.mjs";
 import { appServerProviderOverrides } from "./provider-config.mjs";
+import { normalizeOpenAIRolloutRecords } from "./openai-rollout-normalizer.mjs";
 import { atomicWriteJson, nowIso, pathExists, readJsonl, responseThread, sha256File } from "./utils.mjs";
 import { verifyThread } from "./verify-mirror.mjs";
 
@@ -32,50 +33,36 @@ export async function rolloutState(threadId) {
   if (!rolloutPath) throw new Error(`找不到任务 ${threadId} 的 rollout`);
   const parsed = await readJsonl(rolloutPath);
   let activeTurn = false;
-  let reasoningContentArrayCount = 0;
   for (const record of parsed.records) {
     if (record.value?.type === "event_msg") {
       if (record.value.payload?.type === "task_started") activeTurn = true;
       if (["task_complete", "turn_aborted"].includes(record.value.payload?.type)) activeTurn = false;
     }
-    if (record.value?.type === "response_item"
-      && record.value.payload?.type === "reasoning"
-      && Array.isArray(record.value.payload.content)) {
-      reasoningContentArrayCount += 1;
-    }
   }
+  const compatibility = normalizeOpenAIRolloutRecords(parsed.records);
   return {
     rolloutPath,
     rolloutSha256: await sha256File(rolloutPath),
     parseErrorCount: parsed.errors.length,
     activeTurn,
-    reasoningContentArrayCount,
+    reasoningContentArrayCount: compatibility.normalizedReasoningCount,
+    invalidWebSearchCallIdCount: compatibility.normalizedWebSearchCallIdCount,
+    invalidWebSearchEventReferenceCount: compatibility.normalizedWebSearchEventReferenceCount,
   };
 }
 
-async function normalizeOpenAIReasoningContent(threadId, backupRoot) {
+async function normalizeOpenAIRolloutCompatibility(threadId, backupRoot) {
   const rolloutPath = await findRolloutPath(threadId);
   if (!rolloutPath) throw new Error(`找不到任务 ${threadId} 的 rollout`);
   const parsed = await readJsonl(rolloutPath);
   if (parsed.errors.length > 0) {
     throw new Error(`无法清洗 ${threadId}：rollout 存在 ${parsed.errors.length} 个解析错误`);
   }
-  let normalizedCount = 0;
-  const normalizedRecords = parsed.records.map((record) => {
-    const value = record.value;
-    if (value?.type === "response_item"
-      && value.payload?.type === "reasoning"
-      && Array.isArray(value.payload.content)
-      && value.payload.content.length > 0) {
-      normalizedCount += 1;
-      return { ...record, value: { ...value, payload: { ...value.payload, content: null } } };
-    }
-    return record;
-  });
-  if (normalizedCount === 0) {
+  const normalization = normalizeOpenAIRolloutRecords(parsed.records);
+  if (normalization.totalNormalizedCount === 0) {
     return {
       rolloutPath,
-      normalizedCount: 0,
+      ...normalization,
       backupPath: null,
       sha256After: await sha256File(rolloutPath),
     };
@@ -83,12 +70,12 @@ async function normalizeOpenAIReasoningContent(threadId, backupRoot) {
   const backupPath = `${backupRoot}\\target-rollout-before-normalize.jsonl`;
   await fs.copyFile(rolloutPath, backupPath);
   const temporaryPath = `${rolloutPath}.normalize-${process.pid}.tmp`;
-  const text = `${normalizedRecords.map((record) => JSON.stringify(record.value)).join("\n")}\n`;
+  const text = `${normalization.records.map((record) => JSON.stringify(record.value)).join("\n")}\n`;
   await fs.writeFile(temporaryPath, text, "utf8");
   await fs.rename(temporaryPath, rolloutPath);
   return {
     rolloutPath,
-    normalizedCount,
+    ...normalization,
     backupPath,
     sha256After: await sha256File(rolloutPath),
   };
@@ -160,6 +147,12 @@ export async function buildHandoffPlan({
       expectedReasoningNormalizations: targetProvider === "openai"
         ? sourceRollout.reasoningContentArrayCount
         : 0,
+      expectedWebSearchCallIdNormalizations: targetProvider === "openai"
+        ? sourceRollout.invalidWebSearchCallIdCount
+        : 0,
+      expectedWebSearchEventReferenceNormalizations: targetProvider === "openai"
+        ? sourceRollout.invalidWebSearchEventReferenceCount
+        : 0,
     },
     schema: {
       sha256: schema.schemaSha256,
@@ -227,13 +220,19 @@ export async function handoffOne(options) {
   }
 
   const normalization = plan.target.provider === "openai"
-    ? await normalizeOpenAIReasoningContent(targetThreadId, backup.backupRoot)
+    ? await normalizeOpenAIRolloutCompatibility(targetThreadId, backup.backupRoot)
     : null;
-  if (normalization && normalization.normalizedCount !== plan.target.expectedReasoningNormalizations) {
-    throw new Error(`推理字段清洗数量与 dry-run 不一致：预期 ${plan.target.expectedReasoningNormalizations}，实际 ${normalization.normalizedCount}`);
+  if (normalization && normalization.normalizedReasoningCount !== plan.target.expectedReasoningNormalizations) {
+    throw new Error(`推理字段清洗数量与 dry-run 不一致：预期 ${plan.target.expectedReasoningNormalizations}，实际 ${normalization.normalizedReasoningCount}`);
   }
-  if (normalization && normalization.normalizedCount > 0 && !normalization.backupPath) {
-    throw new Error("推理字段已被修改，但没有生成清洗前备份");
+  if (normalization && normalization.normalizedWebSearchCallIdCount !== plan.target.expectedWebSearchCallIdNormalizations) {
+    throw new Error(`联网搜索调用 ID 清洗数量与 dry-run 不一致：预期 ${plan.target.expectedWebSearchCallIdNormalizations}，实际 ${normalization.normalizedWebSearchCallIdCount}`);
+  }
+  if (normalization && normalization.normalizedWebSearchEventReferenceCount !== plan.target.expectedWebSearchEventReferenceNormalizations) {
+    throw new Error(`联网搜索事件引用清洗数量与 dry-run 不一致：预期 ${plan.target.expectedWebSearchEventReferenceNormalizations}，实际 ${normalization.normalizedWebSearchEventReferenceCount}`);
+  }
+  if (normalization && normalization.totalNormalizedCount > 0 && !normalization.backupPath) {
+    throw new Error("兼容字段已被修改，但没有生成清洗前备份");
   }
 
   const entry = {
@@ -253,11 +252,18 @@ export async function handoffOne(options) {
     normalization: normalization
       ? {
           applied: true,
-          normalizedReasoningCount: normalization.normalizedCount,
+          normalizedReasoningCount: normalization.normalizedReasoningCount,
+          normalizedWebSearchCallIdCount: normalization.normalizedWebSearchCallIdCount,
+          normalizedWebSearchEventReferenceCount: normalization.normalizedWebSearchEventReferenceCount,
           targetRolloutSha256After: normalization.sha256After,
           backupPath: normalization.backupPath,
         }
-      : { applied: false, normalizedReasoningCount: 0 },
+      : {
+          applied: false,
+          normalizedReasoningCount: 0,
+          normalizedWebSearchCallIdCount: 0,
+          normalizedWebSearchEventReferenceCount: 0,
+        },
   };
   if (options.recordManifest !== false) {
     const { manifestPath, manifest } = await readManifest(plan.testMode);

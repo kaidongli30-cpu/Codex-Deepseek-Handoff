@@ -273,6 +273,12 @@ export async function buildBatchHandoffPlan({ targetProvider, onlyTaskId = null 
         expectedReasoningNormalizations: targetProvider === "openai"
           ? rollout.reasoningContentArrayCount
           : 0,
+        expectedWebSearchCallIdNormalizations: targetProvider === "openai"
+          ? rollout.invalidWebSearchCallIdCount
+          : 0,
+        expectedWebSearchEventReferenceNormalizations: targetProvider === "openai"
+          ? rollout.invalidWebSearchEventReferenceCount
+          : 0,
       });
     } catch (error) {
       items.push({
