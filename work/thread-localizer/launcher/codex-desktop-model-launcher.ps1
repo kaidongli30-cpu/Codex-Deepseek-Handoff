@@ -1,4 +1,4 @@
-﻿param(
+param(
     [Parameter(Mandatory = $true)]
     [ValidateSet('gpt', 'deepseek')]
     [string]$Provider,
@@ -177,7 +177,7 @@ function New-ModeBlock {
         $catalog = $modelsPath -replace '\\', '/'
         $lines.Add("model = `"$(Get-ActiveModel 'deepseek')`"")
         $lines.Add('model_provider = "deepseek"')
-        $lines.Add('model_reasoning_effort = "high"')
+        $lines.Add('model_reasoning_effort = "max"')
         $lines.Add("model_catalog_json = `"$catalog`"")
         $lines.Add('forced_login_method = "api"')
     }
