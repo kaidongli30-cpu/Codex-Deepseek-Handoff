@@ -13,8 +13,12 @@ export const USER_THREAD_SOURCE = "user";
 export const CODEX_HOME = path.resolve(
   process.env.CODEX_HOME || path.join(process.env.USERPROFILE || os.homedir(), ".codex"),
 );
-export const CODEX_SCHEMA_ROOT = path.resolve(
-  process.env.CODEX_SCHEMA_ROOT || "C:\\tmp\\codex-appserver-schema-20260802",
+export const CODEX_SCHEMA_ROOT = process.env.CODEX_SCHEMA_ROOT
+  ? path.resolve(process.env.CODEX_SCHEMA_ROOT)
+  : null;
+export const CODEX_SCHEMA_CACHE_ROOT = path.resolve(
+  process.env.CODEX_SCHEMA_CACHE_ROOT
+    || path.join(CODEX_HOME, "model-switcher", "app-server-schema"),
 );
 export const PROJECT_CWD = path.resolve(process.env.THREAD_LOCALIZER_CWD || PROJECT_ROOT);
 export const SESSION_INDEX_PATH = path.join(CODEX_HOME, "session_index.jsonl");

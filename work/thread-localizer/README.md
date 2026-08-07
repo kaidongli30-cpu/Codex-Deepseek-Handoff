@@ -26,6 +26,15 @@ A failure or active turn blocks only that task. Other tasks continue through
 the pipeline. The desktop launcher treats any blocked or failed task as a
 closed gate: it shows the result report path and does not open Codex.
 
+Before the first app-server request, the tool validates the installed Codex
+protocol schema. By default, the schema is generated from the same Codex
+executable that the launcher selected and cached under
+`%USERPROFILE%\.codex\model-switcher\app-server-schema\<codex-version>`. An
+explicit `CODEX_SCHEMA_ROOT` remains available for diagnostics. The cache is
+versioned and records the Codex binary signature and `ClientRequest.json`
+SHA-256; a missing or stale cache is regenerated, while an incompatible
+schema still stops the handoff. The tool no longer depends on `C:\tmp`.
+
 The launcher also holds a per-user handoff lock. If the DeepSeek launcher is
 still handing tasks back to OpenAI after the app closes, the GPT handoff
 shortcut waits for that work to finish instead of starting a second handoff or
@@ -86,6 +95,9 @@ node src/cli.mjs batch-handoff --execute --target-provider openai
 
 Use `--only-task-id <stable-or-current-id>` for a one-task acceptance test.
 Dry-run and execution reports are written under `reports/`.
+
+`node src/cli.mjs schema-check` may create or refresh the versioned schema
+cache. It never starts a model turn or changes task history.
 
 ## Desktop entries
 

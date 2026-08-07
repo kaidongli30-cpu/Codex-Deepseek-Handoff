@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { CODEX_SCHEMA_ROOT, REQUIRED_METHODS } from "./constants.mjs";
+import { ensureSchemaRoot } from "./schema-cache.mjs";
 import { sha256File } from "./utils.mjs";
 
 export class SchemaMismatchError extends Error {
@@ -29,7 +30,8 @@ function definitionProperties(schema, definitionName) {
 }
 
 export async function loadAndValidateSchema(schemaRoot = CODEX_SCHEMA_ROOT) {
-  const clientRequestPath = path.join(schemaRoot, "ClientRequest.json");
+  const resolved = await ensureSchemaRoot({ explicitRoot: schemaRoot });
+  const clientRequestPath = path.join(resolved.schemaRoot, "ClientRequest.json");
   let schema;
   try {
     schema = JSON.parse(await fs.readFile(clientRequestPath, "utf8"));
@@ -71,11 +73,15 @@ export async function loadAndValidateSchema(schemaRoot = CODEX_SCHEMA_ROOT) {
   }
 
   return {
-    schemaRoot,
+    schemaRoot: resolved.schemaRoot,
     clientRequestPath,
     schemaSha256: await sha256File(clientRequestPath),
     methods,
     injectMethod: "thread/inject_items",
     threadSourceField: "threadSource",
+    schemaSource: resolved.source,
+    schemaGenerated: resolved.generated,
+    codexVersion: resolved.codexVersion,
+    schemaMetadataPath: resolved.metadataPath,
   };
 }

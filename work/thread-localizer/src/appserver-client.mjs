@@ -14,7 +14,7 @@ export class AppServerError extends Error {
   }
 }
 
-async function findCodexBinary() {
+export async function findCodexBinary() {
   if (process.env.CODEX_BIN) return process.env.CODEX_BIN;
   const localAppData = process.env.LOCALAPPDATA;
   if (localAppData) {
@@ -75,7 +75,12 @@ export class AppServerClient {
     this.child.on("error", (error) => this.#rejectPending(new AppServerError("无法启动 Codex app-server", { data: error.message })));
     this.child.on("exit", (code, signal) => {
       this.closed = true;
-      this.#rejectPending(new AppServerError("Codex app-server 已退出", { data: { code, signal } }));
+      const stderr = this.stderrTail.trim();
+      const detail = stderr ? `\n${stderr}` : "";
+      this.#rejectPending(new AppServerError(
+        `Codex app-server 已退出（退出码 ${code ?? "未知"}${signal ? `，信号 ${signal}` : ""}）。${detail}`,
+        { data: { code, signal, stderr } },
+      ));
     });
 
     await this.request("initialize", {

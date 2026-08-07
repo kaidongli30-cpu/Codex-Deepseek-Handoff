@@ -127,14 +127,38 @@ function Invoke-BatchHandoff {
         '--execute',
         '--target-provider', $engineProvider
     )
-    $process = Start-Process -FilePath (Find-NodeExecutable) `
-        -ArgumentList $arguments `
-        -WorkingDirectory $handoffToolRoot `
-        -WindowStyle Hidden `
-        -Wait `
-        -PassThru `
-        -RedirectStandardOutput $stdoutPath `
-        -RedirectStandardError $stderrPath
+    $savedCodexBin = $env:CODEX_BIN
+    $savedHome = $env:HOME
+    $savedCodexHome = $env:CODEX_HOME
+    $env:CODEX_BIN = Find-CodexExecutable
+    if (-not $env:HOME) { $env:HOME = $env:USERPROFILE }
+    $env:CODEX_HOME = $codexHome
+    try {
+        $process = Start-Process -FilePath (Find-NodeExecutable) `
+            -ArgumentList $arguments `
+            -WorkingDirectory $handoffToolRoot `
+            -WindowStyle Hidden `
+            -Wait `
+            -PassThru `
+            -RedirectStandardOutput $stdoutPath `
+            -RedirectStandardError $stderrPath
+    } finally {
+        if ($null -eq $savedCodexBin) {
+            Remove-Item Env:CODEX_BIN -ErrorAction SilentlyContinue
+        } else {
+            $env:CODEX_BIN = $savedCodexBin
+        }
+        if ($null -eq $savedHome) {
+            Remove-Item Env:HOME -ErrorAction SilentlyContinue
+        } else {
+            $env:HOME = $savedHome
+        }
+        if ($null -eq $savedCodexHome) {
+            Remove-Item Env:CODEX_HOME -ErrorAction SilentlyContinue
+        } else {
+            $env:CODEX_HOME = $savedCodexHome
+        }
+    }
     if ($process.ExitCode -ne 0) {
         $details = @()
         if (Test-Path -LiteralPath $stderrPath) {
