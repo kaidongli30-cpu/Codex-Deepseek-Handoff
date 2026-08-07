@@ -29,6 +29,21 @@ function definitionProperties(schema, definitionName) {
   return schema.definitions?.[definitionName]?.properties || {};
 }
 
+export function threadMetadataCapabilities(schema) {
+  const methods = schemaMethodNames(schema);
+  const fields = Object.keys(definitionProperties(schema, "ThreadMetadataUpdateParams"));
+  const supportsMetadataUpdate = methods.includes("thread/metadata/update");
+  const supportsPinning = supportsMetadataUpdate && fields.includes("isPinned");
+  return {
+    updateFields: fields,
+    pinning: {
+      supported: supportsPinning,
+      method: supportsPinning ? "thread/metadata/update" : null,
+      field: supportsPinning ? "isPinned" : null,
+    },
+  };
+}
+
 export async function loadAndValidateSchema(schemaRoot = CODEX_SCHEMA_ROOT) {
   const resolved = await ensureSchemaRoot({ explicitRoot: schemaRoot });
   const clientRequestPath = path.join(resolved.schemaRoot, "ClientRequest.json");
@@ -59,6 +74,7 @@ export async function loadAndValidateSchema(schemaRoot = CODEX_SCHEMA_ROOT) {
   const forkRequired = requiredDefinitionFields(schema, "ThreadForkParams");
   const forkProperties = definitionProperties(schema, "ThreadForkParams");
   const startProperties = definitionProperties(schema, "ThreadStartParams");
+  const threadMetadata = threadMetadataCapabilities(schema);
   if (!injectRequired.includes("threadId") || !injectRequired.includes("items")) {
     throw new SchemaMismatchError("ThreadInjectItemsParams 字段与当前实施方案不一致", { injectRequired });
   }
@@ -83,5 +99,6 @@ export async function loadAndValidateSchema(schemaRoot = CODEX_SCHEMA_ROOT) {
     schemaGenerated: resolved.generated,
     codexVersion: resolved.codexVersion,
     schemaMetadataPath: resolved.metadataPath,
+    threadMetadata,
   };
 }

@@ -157,6 +157,7 @@ export async function buildHandoffPlan({
     schema: {
       sha256: schema.schemaSha256,
       threadSourceField: schema.threadSourceField,
+      threadMetadata: schema.threadMetadata,
     },
     existingHandoff: existing ? { targetThreadId: existing.targetThreadId, handedOffAt: existing.handedOffAt } : null,
     safeToProceed: sourceRollout.parseErrorCount === 0 && !sourceRollout.activeTurn && !existing,
@@ -180,25 +181,47 @@ export async function handoffOne(options) {
   let forkResult;
   let targetThreadId;
   let verification;
+  const pinning = {
+    requested: plan.target.isPinned,
+    supported: Boolean(plan.schema.threadMetadata?.pinning?.supported),
+    applied: false,
+    status: plan.target.isPinned ? "unsupported-manual" : "not-requested",
+  };
   try {
-    forkResult = await client.request("thread/fork", {
-      threadId: plan.source.threadId,
-      cwd: plan.target.cwd,
-      modelProvider: plan.target.provider,
-      model: plan.target.model,
-      threadSource: plan.target.threadSource,
-      excludeTurns: false,
-      deferGoalContinuation: true,
-    });
-    targetThreadId = responseThread(forkResult)?.id || forkResult?.threadId || forkResult?.id || null;
-    if (!targetThreadId) throw new Error("thread/fork 没有返回目标任务 ID");
-    if (plan.target.name) {
-      await client.request("thread/name/set", { threadId: targetThreadId, name: plan.target.name });
+    try {
+      forkResult = await client.request("thread/fork", {
+        threadId: plan.source.threadId,
+        cwd: plan.target.cwd,
+        modelProvider: plan.target.provider,
+        model: plan.target.model,
+        threadSource: plan.target.threadSource,
+        excludeTurns: false,
+        deferGoalContinuation: true,
+      });
+      targetThreadId = responseThread(forkResult)?.id || forkResult?.threadId || forkResult?.id || null;
+      if (!targetThreadId) throw new Error("thread/fork 没有返回目标任务 ID");
+      if (plan.target.name) {
+        await client.request("thread/name/set", { threadId: targetThreadId, name: plan.target.name });
+      }
+      if (plan.target.isPinned && pinning.supported) {
+        const { method, field } = plan.schema.threadMetadata.pinning;
+        await client.request(method, { threadId: targetThreadId, [field]: true });
+        pinning.applied = true;
+        pinning.status = "applied";
+      }
+      verification = await verifyThread(client, targetThreadId);
+    } catch (error) {
+      if (targetThreadId) {
+        try {
+          await client.request("thread/archive", { threadId: targetThreadId });
+        } catch (cleanupError) {
+          const original = error instanceof Error ? error.message : String(error);
+          const cleanup = cleanupError instanceof Error ? cleanupError.message : String(cleanupError);
+          throw new Error(`${original}；失败目标 ${targetThreadId} 自动归档也失败: ${cleanup}`);
+        }
+      }
+      throw error;
     }
-    if (plan.target.isPinned) {
-      await client.request("thread/metadata/update", { threadId: targetThreadId, isPinned: true });
-    }
-    verification = await verifyThread(client, targetThreadId);
   } finally {
     await client.close();
   }
@@ -213,7 +236,7 @@ export async function handoffOne(options) {
     turnCount: verification.turnCount === plan.source.turnCount,
     itemCount: verification.itemCount === plan.source.itemCount,
     visibleMessageCount: verification.visibleMessageCount === plan.source.visibleMessageCount,
-    isPinned: plan.target.isPinned ? Boolean(targetDatabase?.is_pinned) : true,
+    isPinned: plan.target.isPinned && pinning.supported ? Boolean(targetDatabase?.is_pinned) : true,
   };
   if (!Object.values(checks).every(Boolean)) {
     throw new Error(`handoff 验收失败: ${JSON.stringify(checks)}`);
@@ -249,6 +272,7 @@ export async function handoffOne(options) {
     handedOffAt: nowIso(),
     backupRoot: backup.backupRoot,
     checks,
+    pinning,
     normalization: normalization
       ? {
           applied: true,
@@ -280,14 +304,16 @@ export async function handoffOne(options) {
 }
 
 export async function archiveTestThread(threadId, provider, model = null) {
+  const schema = await loadAndValidateSchema();
   const client = await createAppServerClient({
     cwd: PROJECT_CWD,
     configOverrides: appServerProviderOverrides(provider, model),
   });
   try {
     const row = stateRow(threadId);
-    if (row?.is_pinned) {
-      await client.request("thread/metadata/update", { threadId, isPinned: false });
+    if (row?.is_pinned && schema.threadMetadata.pinning.supported) {
+      const { method, field } = schema.threadMetadata.pinning;
+      await client.request(method, { threadId, [field]: false });
     }
     await client.request("thread/archive", { threadId });
   } finally {

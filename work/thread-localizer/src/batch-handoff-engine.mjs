@@ -250,6 +250,13 @@ export async function buildBatchHandoffPlan({ targetProvider, onlyTaskId = null 
       targetModel,
       cwd: task.canonicalCwd,
       isPinned: task.isPinned,
+      pinning: {
+        requested: task.isPinned,
+        supported: Boolean(schema.threadMetadata?.pinning?.supported),
+        action: task.isPinned && !schema.threadMetadata?.pinning?.supported
+          ? "continue-unpinned-manual"
+          : (task.isPinned ? "copy" : "not-requested"),
+      },
     };
     if (!selected) {
       items.push({ ...common, action: "skip", reason: "not-selected" });
@@ -303,6 +310,7 @@ export async function buildBatchHandoffPlan({ targetProvider, onlyTaskId = null 
     schema: {
       sha256: schema.schemaSha256,
       threadSourceField: schema.threadSourceField,
+      threadMetadata: schema.threadMetadata,
     },
     settingsPath: path.resolve(PROJECT_CWD, "work", "thread-localizer", "data", "handoff-settings.json"),
     manifestPath: BATCH_HANDOFF_MANIFEST_PATH,
@@ -404,6 +412,7 @@ export async function batchHandoff({ targetProvider, onlyTaskId = null, execute 
         cwd: item.cwd,
         checks: result.entry.checks,
         normalization: result.entry.normalization,
+        pinning: result.entry.pinning,
         backupRoot: result.entry.backupRoot,
       });
     } catch (error) {
