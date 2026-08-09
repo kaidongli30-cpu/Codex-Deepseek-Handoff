@@ -11,6 +11,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+coverage/
+dist/
+**/*.lnk
+**/install-manifest.json
 
 # Credentials and private local material
 **/auth.json
@@ -23,6 +27,7 @@ pnpm-debug.log*
 **/*.pfx
 **/*.secret
 **/*secret*
+work/model-switcher/chatgpt-official-v2.ico
 
 # Codex / task runtime state (keep source and settings, exclude local state)
 outputs/

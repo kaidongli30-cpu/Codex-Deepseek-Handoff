@@ -9,7 +9,9 @@
     "deepseek": {
       "activeModel": "deepseek-v4-flash",
       "modelPolicy": "global",
-      "forcedLoginMethod": "api"
+      "forcedLoginMethod": "api",
+      "reasoningEffort": "max",
+      "webSearch": "live"
     }
   },
   "discovery": {

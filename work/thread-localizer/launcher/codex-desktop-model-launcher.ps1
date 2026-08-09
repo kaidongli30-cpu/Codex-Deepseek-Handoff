@@ -165,6 +165,21 @@ function Get-ActiveModel {
     return $activeModel
 }
 
+function Get-DeepSeekModeSetting {
+    param([string]$Name)
+    $settings = Get-HandoffSettings
+    $property = $settings.managedProviders.PSObject.Properties['deepseek']
+    $value = if ($property -and $property.Value.PSObject.Properties[$Name]) {
+        [string]$property.Value.PSObject.Properties[$Name].Value
+    } else {
+        ''
+    }
+    if (-not $value) {
+        throw "DeepSeek 配置缺少 $Name。请在 handoff-settings.json 中明确设置。"
+    }
+    return $value
+}
+
 function Invoke-BatchHandoff {
     param([string]$TargetProvider)
 
@@ -257,8 +272,8 @@ function New-ModeBlock {
         $catalog = $modelsPath -replace '\\', '/'
         $lines.Add("model = `"$(Get-ActiveModel 'deepseek')`"")
         $lines.Add('model_provider = "deepseek"')
-        $lines.Add('model_reasoning_effort = "max"')
-        $lines.Add('web_search = "live"')
+        $lines.Add("model_reasoning_effort = `"$(Get-DeepSeekModeSetting 'reasoningEffort')`"")
+        $lines.Add("web_search = `"$(Get-DeepSeekModeSetting 'webSearch')`"")
         $lines.Add("model_catalog_json = `"$catalog`"")
         $lines.Add('forced_login_method = "api"')
     }

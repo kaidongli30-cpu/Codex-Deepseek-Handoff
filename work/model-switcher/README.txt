@@ -1,5 +1,10 @@
-Codex desktop model switcher
+Codex-DeepSeek-Handoff desktop model switcher
 ============================
+
+This folder contains the provider-facing Windows helpers. It is installed by
+`work/thread-localizer/launcher/install.ps1`; it does not contain a real API
+key. The encrypted key file is created only on the user's machine and is
+ignored by Git.
 
 Desktop shortcut:
   The user-created DeepSeek shortcut (currently named DeepSeek.lnk)
@@ -17,9 +22,11 @@ The DeepSeek shortcut and the standard taskbar Codex icon open the same
 installed Codex desktop application. They do not open a terminal task picker.
 
 DeepSeek shortcut:
-  - model: deepseek-v4-flash
+  - model: deepseek-v4-flash (change the catalog and handoff settings together)
   - provider: https://api.deepseek.com/ using the Responses API
   - forced login method: API
+  - default reasoning effort: max
+  - web search request: live
 
 After the DeepSeek Codex app fully exits, the hidden launcher automatically
 restores GPT + ChatGPT login mode. Wait about 2-3 seconds, then the standard

@@ -30,7 +30,7 @@
       "default_reasoning_summary": "none",
       "display_name": "DeepSeek-V4-Flash",
       "description": "Latest frontier agentic coding model.",
-      "default_reasoning_level": "high",
+      "default_reasoning_level": "max",
       "supported_reasoning_levels": [
         {
           "effort": "low",
@@ -97,7 +97,7 @@
       "default_reasoning_summary": "none",
       "display_name": "DeepSeek-V4-Pro",
       "description": "Most capable frontier agentic coding model.",
-      "default_reasoning_level": "high",
+      "default_reasoning_level": "max",
       "supported_reasoning_levels": [
         {
           "effort": "low",

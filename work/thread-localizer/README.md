@@ -1,8 +1,12 @@
-# Codex multi-task provider handoff
+# Codex-DeepSeek-Handoff: thread-localizer
 
 This tool keeps local Codex desktop tasks usable while switching between the
 ChatGPT/OpenAI provider and the official DeepSeek Responses API provider. It
 uses the installed Codex `app-server` protocol and does not send model turns.
+
+This directory is the runtime CLI used by the public repository root. The
+desktop installation files live beside it under `launcher/`; use the root
+README for the end-user install flow.
 
 ## Current design
 
@@ -98,6 +102,10 @@ Dry-run and execution reports are written under `reports/`.
 
 `node src/cli.mjs schema-check` may create or refresh the versioned schema
 cache. It never starts a model turn or changes task history.
+
+For a one-task acceptance run, add `--only-task-id <stable-or-current-id>` to
+both the dry run and execute command. Keep the generated report private; it
+can contain task names and message metadata.
 
 ## Desktop entries
 

@@ -1,0 +1,17 @@
+{
+  "name": "codex-deepseek-handoff",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Keep Codex desktop task history usable while switching between OpenAI and DeepSeek.",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "npm --prefix work/thread-localizer test",
+    "schema-check": "npm --prefix work/thread-localizer run schema-check",
+    "dry-run:deepseek": "npm --prefix work/thread-localizer run batch-dry-run-deepseek",
+    "dry-run:openai": "npm --prefix work/thread-localizer run batch-dry-run-openai",
+    "verify": "npm --prefix work/thread-localizer run verify"
+  }
+}
