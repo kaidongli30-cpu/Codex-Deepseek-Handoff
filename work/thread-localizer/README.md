@@ -71,7 +71,7 @@ task needs to be moved to a canonical project directory.
   on their next DeepSeek handoff.
 
 For a future DeepSeek model change, first add or confirm its exact API slug in
-`C:\Users\Lenovo\.codex\model-switcher\models-deepseek.json`, then change only
+`%USERPROFILE%\.codex\model-switcher\models-deepseek.json`, then change only
 `managedProviders.deepseek.activeModel` in `data/handoff-settings.json`. The
 launcher refuses to start if the active slug is missing from the catalog.
 Changing from one DeepSeek model to another is treated as a real handoff even
