@@ -8,7 +8,7 @@
     "node": ">=18"
   },
   "scripts": {
-    "test": "node --test test/*.test.mjs",
+    "test": "node --test",
     "schema-check": "node src/cli.mjs schema-check",
     "batch-inventory": "node src/cli.mjs batch-inventory",
     "batch-dry-run-deepseek": "node src/cli.mjs batch-handoff-dry-run --target-provider deepseek",
