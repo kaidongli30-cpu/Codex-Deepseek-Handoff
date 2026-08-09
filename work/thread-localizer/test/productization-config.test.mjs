@@ -18,7 +18,7 @@ test("handoff settings keep the provider defaults required by the product", () =
 
 test("the desktop launcher is portable and keeps max reasoning plus live search", () => {
   const launcher = fs.readFileSync(path.join(toolRoot, "launcher", "codex-desktop-model-launcher.ps1"), "utf8");
-  assert.doesNotMatch(launcher, /C:\\Users\\Lenovo\\Documents\\Codex/);
+  assert.doesNotMatch(launcher, /[A-Za-z]:\\Users\\[^\\]+\\Documents\\Codex/);
   assert.match(launcher, /CODEX_HANDOFF_ROOT/);
   assert.match(launcher, /Get-DeepSeekModeSetting 'reasoningEffort'/);
   assert.match(launcher, /Get-DeepSeekModeSetting 'webSearch'/);
@@ -26,7 +26,7 @@ test("the desktop launcher is portable and keeps max reasoning plus live search"
 
 test("the key helper resolves its secret beside the installed tool", () => {
   const helper = fs.readFileSync(path.join(repoRoot, "work", "model-switcher", "get-deepseek-key.ps1"), "utf8");
-  assert.doesNotMatch(helper, /C:\\Users\\Lenovo\\\.codex/);
+  assert.doesNotMatch(helper, /[A-Za-z]:\\Users\\[^\\]+\\\.codex/);
   assert.match(helper, /Join-Path\s+\$installRoot\s+'deepseek-api-key\.dpapi'/);
 });
 
