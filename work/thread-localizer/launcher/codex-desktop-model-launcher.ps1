@@ -12,19 +12,75 @@ Set-StrictMode -Version Latest
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
-$codexHome = Join-Path $env:USERPROFILE '.codex'
+$codexHome = if ($env:CODEX_HOME) {
+    [IO.Path]::GetFullPath($env:CODEX_HOME)
+} else {
+    Join-Path $env:USERPROFILE '.codex'
+}
 $configPath = Join-Path $codexHome 'config.toml'
-$installDir = Join-Path $codexHome 'model-switcher'
+$installDir = if ($env:CODEX_MODEL_SWITCHER_ROOT) {
+    [IO.Path]::GetFullPath($env:CODEX_MODEL_SWITCHER_ROOT)
+} else {
+    Join-Path $codexHome 'model-switcher'
+}
 $secretPath = Join-Path $installDir 'deepseek-api-key.dpapi'
-$modelsPath = Join-Path $installDir 'models-deepseek.json'
-$keyHelperPath = Join-Path $installDir 'get-deepseek-key.ps1'
 $backupRoot = Join-Path $codexHome 'backups\desktop-model-switcher-switches'
-$handoffToolRoot = 'C:\Users\Lenovo\Documents\Codex\2026-08-01\codex-codex-codex-cli-codex-chatgpt\work\thread-localizer'
-$handoffCliPath = Join-Path $handoffToolRoot 'src\cli.mjs'
-$handoffSettingsPath = Join-Path $handoffToolRoot 'data\handoff-settings.json'
 $handoffLogRoot = Join-Path $installDir 'handoff-logs'
 $managedStart = '# >>> Codex desktop model switcher: mode (managed; do not edit)'
 $managedEnd = '# <<< Codex desktop model switcher: mode'
+
+function Resolve-HandoffToolRoot {
+    $scriptRoot = $PSScriptRoot
+    $candidates = New-Object System.Collections.Generic.List[string]
+
+    if ($env:CODEX_HANDOFF_ROOT) {
+        $candidates.Add([IO.Path]::GetFullPath($env:CODEX_HANDOFF_ROOT))
+    }
+
+    # Repository checkout: launcher is under work/thread-localizer/launcher.
+    $repositoryToolRoot = Split-Path -Parent $scriptRoot
+    $candidates.Add($repositoryToolRoot)
+
+    # Installed layout: launcher is beside a copied thread-localizer directory.
+    $candidates.Add((Join-Path $scriptRoot 'thread-localizer'))
+    $candidates.Add($scriptRoot)
+
+    foreach ($candidate in $candidates) {
+        $cliCandidate = Join-Path $candidate 'src\cli.mjs'
+        $settingsCandidate = Join-Path $candidate 'data\handoff-settings.json'
+        if ((Test-Path -LiteralPath $cliCandidate -PathType Leaf) -and
+            (Test-Path -LiteralPath $settingsCandidate -PathType Leaf)) {
+            return (Resolve-Path -LiteralPath $candidate).Path
+        }
+    }
+
+    throw @"
+找不到 Codex-DeepSeek-Handoff 工具目录。
+
+请确认启动器旁边存在 thread-localizer\src\cli.mjs，或设置 CODEX_HANDOFF_ROOT 指向包含 src\cli.mjs 和 data\handoff-settings.json 的目录。
+当前启动器目录：$scriptRoot
+"@
+}
+
+function Resolve-ModelSwitcherRoot {
+    $candidates = New-Object System.Collections.Generic.List[string]
+    $candidates.Add($installDir)
+    $candidates.Add((Join-Path (Split-Path -Parent $handoffToolRoot) 'model-switcher'))
+    foreach ($candidate in $candidates) {
+        if ((Test-Path -LiteralPath (Join-Path $candidate 'models-deepseek.json') -PathType Leaf) -and
+            (Test-Path -LiteralPath (Join-Path $candidate 'get-deepseek-key.ps1') -PathType Leaf)) {
+            return (Resolve-Path -LiteralPath $candidate).Path
+        }
+    }
+    throw '找不到 DeepSeek 模型目录。请确认 models-deepseek.json 和 get-deepseek-key.ps1 存在。'
+}
+
+$handoffToolRoot = Resolve-HandoffToolRoot
+$modelSwitcherRoot = Resolve-ModelSwitcherRoot
+$modelsPath = Join-Path $modelSwitcherRoot 'models-deepseek.json'
+$keyHelperPath = Join-Path $modelSwitcherRoot 'get-deepseek-key.ps1'
+$handoffCliPath = Join-Path $handoffToolRoot 'src\cli.mjs'
+$handoffSettingsPath = Join-Path $handoffToolRoot 'data\handoff-settings.json'
 
 function Show-LauncherMessage {
     param(

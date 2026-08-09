@@ -1,7 +1,12 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-$secretPath = 'C:\Users\Lenovo\.codex\model-switcher\deepseek-api-key.dpapi'
+$installRoot = if ($env:CODEX_MODEL_SWITCHER_ROOT) {
+    [IO.Path]::GetFullPath($env:CODEX_MODEL_SWITCHER_ROOT)
+} else {
+    $PSScriptRoot
+}
+$secretPath = Join-Path $installRoot 'deepseek-api-key.dpapi'
 if (-not (Test-Path -LiteralPath $secretPath)) {
     [Console]::Error.WriteLine('DeepSeek API key is not configured. Use the DeepSeek desktop shortcut first.')
     exit 1
