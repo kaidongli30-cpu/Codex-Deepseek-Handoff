@@ -47,10 +47,29 @@ DeepSeek 工作
 - Node.js 18 或更高版本
 - PowerShell 7（推荐用于启动器和安装脚本）
 - 已开通 DeepSeek 官方 API，并自行在本机保存 API key
+- 已先通过 DeepSeek 官方 Codex 脚本完成基础接入，并确认 DeepSeek 能单独启动
 
 项目不会把 API key 写入 Git。DPAPI 密文文件也被 `.gitignore` 排除。
 
-## 本地安装（先 dry-run）
+## 本地安装
+
+### 1. 先完成 DeepSeek 官方接入
+
+本项目不重新分发 DeepSeek 官方模型目录。先从官方地址下载脚本，阅读内容后
+再执行；不要把 API key 写入仓库：
+
+```powershell
+$officialSetup = Join-Path $env:TEMP 'codex-deepseek-setup-en.ps1'
+Invoke-WebRequest `
+  -Uri 'https://cdn.deepseek.com/api-docs/codex-deepseek-setup-en.ps1' `
+  -OutFile $officialSetup
+Get-Content -LiteralPath $officialSetup
+pwsh -NoProfile -ExecutionPolicy Bypass -File $officialSetup
+```
+
+完全退出并重新打开一次 Codex，确认 DeepSeek 基础接入可用，然后关闭 Codex。
+
+### 2. 安装任务交接层（先 dry-run）
 
 在仓库根目录执行。下面的第一条只检查将要复制的文件，不会改动你的
 Codex 配置或任务；确认输出无误后再去掉 `-WhatIf`。
@@ -66,24 +85,28 @@ pwsh -NoProfile -ExecutionPolicy Bypass `
   -SourceRoot $repo
 ```
 
-安装脚本只复制启动器、模型目录、交接 CLI 和设置模板到
-`%USERPROFILE%\.codex\model-switcher`，不迁移任务数据库、不覆盖源 rollout，
-也不会自动启动 Codex。安装后可按需重新生成“任务交接GPT”快捷方式：
+安装器会复用官方模型目录，复制交接 CLI，备份并初始化受管配置，严格验证
+候选 `config.toml`，然后创建桌面的“DeepSeek交接”和“任务交接GPT”两个入口。
+它不会迁移任务数据库、覆盖源 rollout、自动发送模型请求或自动启动 Codex。
 
-```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass `
-  -File "$env:USERPROFILE\.codex\model-switcher\create-gpt-handoff-shortcut.ps1"
-```
+### 3. 使用
 
-DeepSeek 入口仍使用官方脚本或你已有的快捷方式。切换前完全退出 Codex；
-启动器会等待交接完成，成功后才显示桌面应用。
+切换前完全退出 Codex。进入 DeepSeek 时点击“DeepSeek交接”；回到 ChatGPT
+登录模式时点击“任务交接GPT”。启动器会等待全部任务交接完成，成功后才
+显示桌面应用；工作期间重复点击不会创建重复会话。
 
 卸载只移除本项目安装的工具文件，不删除 Codex 任务、配置或加密 API key：
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass `
-  -File "$repo\work\thread-localizer\launcher\uninstall.ps1" -WhatIf
+  -File "$env:USERPROFILE\.codex\model-switcher\uninstall.ps1" -WhatIf
+
+pwsh -NoProfile -ExecutionPolicy Bypass `
+  -File "$env:USERPROFILE\.codex\model-switcher\uninstall.ps1"
 ```
+
+卸载器只删除受管配置区块、两个快捷方式和程序文件；官方 DeepSeek 模型目录、
+加密 API key、任务交接 manifest、报告和备份默认保留。
 
 ## 开发与验证
 
@@ -124,5 +147,6 @@ npm run dry-run:openai
 
 ## 许可
 
-本项目采用 MIT License。第三方图标或本地模型目录中的品牌素材应由使用者
-自行确认授权；不要把个人的 ChatGPT 图标、API key 或任务数据提交到公开仓库。
+本项目采用 MIT License。DeepSeek 官方模型目录和品牌图标不会随仓库重新
+分发；安装器复用用户本机的官方安装结果。不要把个人图标、API key 或任务
+数据提交到公开仓库。

@@ -36,6 +36,13 @@ Check that the slug in `data/handoff-settings.json` is present in the installed
 `models-deepseek.json` and that the model advertises Responses API support.
 Restarting the app alone does not repair a catalog typo.
 
+## The installer says the official model catalog is missing
+
+This repository does not redistribute DeepSeek's catalog or branded icon. Run
+and test the official DeepSeek Codex setup first, then rerun this project's
+installer. Do not create an empty `models-deepseek.json`: the launcher needs the
+real catalog to validate the selected model before changing modes.
+
 ## Recovery
 
 Keep the source task and its backup. Git rollback handles source-code changes;

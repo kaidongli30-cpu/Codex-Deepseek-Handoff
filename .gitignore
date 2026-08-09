@@ -28,6 +28,8 @@ dist/
 **/*.secret
 **/*secret*
 work/model-switcher/chatgpt-official-v2.ico
+work/model-switcher/deepseek.ico
+work/model-switcher/models-deepseek.json
 
 # Codex / task runtime state (keep source and settings, exclude local state)
 outputs/

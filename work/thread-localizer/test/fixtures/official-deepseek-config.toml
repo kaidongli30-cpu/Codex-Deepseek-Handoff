@@ -1,0 +1,11 @@
+[model_providers.deepseek]
+name = "DeepSeek"
+base_url = "https://api.deepseek.com/"
+wire_api = "responses"
+requires_openai_auth = false
+
+[model_providers.deepseek.auth]
+command = "C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
+args = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "C:/placeholder/get-deepseek-key.ps1"]
+timeout_ms = 5000
+refresh_interval_ms = 300000

@@ -8,7 +8,7 @@
 | Node.js | 18 or newer | Used by the CLI and tests. |
 | PowerShell | 7 recommended | The launcher can fall back to Windows PowerShell when necessary. |
 | OpenAI | ChatGPT login mode | Existing task model is preserved when known. |
-| DeepSeek | Official Responses API provider | The selected slug must exist in the local model catalog. |
+| DeepSeek | Official Responses API provider | Complete and test the official Codex setup first; the selected slug must exist in its local model catalog. |
 | DeepSeek reasoning | `max` default | The launcher writes this value into its managed config block. |
 | DeepSeek web search | `live` default | Provider/model support is still required; this setting only enables the request. |
 | Images | Not provided by the handoff layer | Vision support depends on the selected provider model and Codex input path. |

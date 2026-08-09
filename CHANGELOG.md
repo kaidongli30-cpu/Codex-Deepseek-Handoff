@@ -10,6 +10,12 @@ All notable changes to this project are recorded here.
 - Kept DeepSeek's default reasoning effort at `max` and web search at `live`.
 - Added installer/uninstaller scripts, contributor and security guidance, and
   CI checks for Node tests and PowerShell syntax.
+- Added idempotent first-run config bootstrap and both GPT/DeepSeek handoff
+  desktop entries.
+- Stopped redistributing the official DeepSeek model catalog and unverified
+  branded icon; installation now reuses the official local setup.
+- Added isolated install/uninstall CI coverage that preserves task manifests,
+  reports, official provider files, and encrypted credentials.
 
 ## 0.1.0
 

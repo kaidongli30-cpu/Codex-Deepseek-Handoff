@@ -9,6 +9,7 @@
   },
   "scripts": {
     "test": "npm --prefix work/thread-localizer test",
+    "test:installer": "pwsh -NoProfile -File scripts/test-install-layout.ps1",
     "schema-check": "npm --prefix work/thread-localizer run schema-check",
     "dry-run:deepseek": "npm --prefix work/thread-localizer run batch-dry-run-deepseek",
     "dry-run:openai": "npm --prefix work/thread-localizer run batch-dry-run-openai",

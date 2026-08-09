@@ -22,3 +22,6 @@ jobs:
       - name: Parse PowerShell scripts
         shell: pwsh
         run: ./scripts/check-powershell.ps1
+      - name: Test isolated install and uninstall layout
+        shell: pwsh
+        run: ./scripts/test-install-layout.ps1

@@ -1,16 +1,13 @@
 Codex-DeepSeek-Handoff desktop model switcher
 ============================
 
-This folder contains the provider-facing Windows helpers. It is installed by
-`work/thread-localizer/launcher/install.ps1`; it does not contain a real API
-key. The encrypted key file is created only on the user's machine and is
-ignored by Git.
+This folder contains the fallback credential helper only. The DeepSeek model
+catalog and branded icon are intentionally not distributed by this project;
+the installer reuses the official DeepSeek Codex setup already present under
+the user's Codex home. A real API key is never stored in Git.
 
-Desktop shortcut:
-  The user-created DeepSeek shortcut (currently named DeepSeek.lnk)
-
-Normal GPT entry:
-  Use the standard Codex icon pinned to the Windows taskbar.
+DeepSeek handoff entry:
+  Use the desktop shortcut named DeepSeek交接.
 
 DeepSeek-to-GPT handoff entry:
   Use the desktop shortcut named 任务交接GPT. It waits for the whole handoff
@@ -18,7 +15,7 @@ DeepSeek-to-GPT handoff entry:
   The first click shows a short notice; repeated clicks while it is working are
   ignored and cannot queue another handoff.
 
-The DeepSeek shortcut and the standard taskbar Codex icon open the same
+The two handoff shortcuts open the same
 installed Codex desktop application. They do not open a terminal task picker.
 
 DeepSeek shortcut:
