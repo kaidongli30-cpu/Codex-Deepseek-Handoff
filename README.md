@@ -1,6 +1,6 @@
 # Codex-DeepSeek-Handoff
 
-<p align="center"><b>简体中文</b> | <a href="README.en.md">English</a></p>
+<p align="center"><b>简体中文</b> | <a href="README.en.md">English</a> | <a href="README.ja.md">日本語</a></p>
 
 在 Codex 桌面应用中，让 GPT 和 DeepSeek 接着同一个任务继续聊。
 
@@ -469,6 +469,7 @@ npm run dry-run:openai
 - [安全边界](docs/safety.md)
 - [命令行与协议细节](work/thread-localizer/README.md)
 - [English README](README.en.md)
+- [日本語 README](README.ja.md)
 
 ## 开源许可
 

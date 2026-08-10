@@ -1,6 +1,6 @@
 # Codex-DeepSeek-Handoff
 
-<p align="center"><a href="README.md">简体中文</a> | <b>English</b></p>
+<p align="center"><a href="README.md">简体中文</a> | <b>English</b> | <a href="README.ja.md">日本語</a></p>
 
 Keep working on the same task in the Codex desktop app with GPT and DeepSeek.
 
@@ -499,6 +499,7 @@ Provider defaults live at
 - [Safety](docs/safety.md)
 - [CLI and protocol details](work/thread-localizer/README.md)
 - [Chinese README](README.md)
+- [Japanese README](README.ja.md)
 
 ## License
 
