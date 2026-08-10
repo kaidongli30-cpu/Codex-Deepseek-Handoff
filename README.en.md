@@ -1,5 +1,7 @@
 # Codex-DeepSeek-Handoff
 
+<p align="center"><a href="README.md">简体中文</a> | <b>English</b></p>
+
 Keep working on the same task in the Codex desktop app with GPT and DeepSeek.
 
 > This is a local task-handoff tool that currently supports Windows only. If
