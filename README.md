@@ -460,6 +460,10 @@ npm run dry-run:openai
 - OpenAI 使用 `preserve-existing`，尽量回到任务此前使用的 GPT 模型。
 - DeepSeek 默认使用 `deepseek-v4-pro + max`。进入 DeepSeek 模式后，可在 Codex
   原生模型菜单中为当前任务切换 V4 Pro/V4 Flash 与 Low/High/Max。
+- 部分 Codex Desktop 会过滤第三方模型名。启动器会生成两个本机兼容菜单项，
+  并且只在 DeepSeek 模式启动一个绑定 `127.0.0.1` 的模型名称适配器。它只把
+  兼容名称换回官方 DeepSeek slug；GPT 请求不会经过它，消息正文、工具调用、
+  搜索记录和返回流也不会被它改写。
 - 交接器会记住每个任务最后使用的 DeepSeek 模型和思考强度；下次从 GPT 交接
   回来时优先恢复。只有从未使用过 DeepSeek 的任务才采用默认值。
 - DeepSeek 模型 slug 必须存在于本机官方 `models-deepseek.json` 中。

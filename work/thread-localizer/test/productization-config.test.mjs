@@ -10,6 +10,8 @@ const repoRoot = path.resolve(toolRoot, "..", "..");
 test("handoff settings keep the provider defaults required by the product", () => {
   const settings = JSON.parse(fs.readFileSync(path.join(toolRoot, "data", "handoff-settings.json"), "utf8"));
   assert.equal(settings.managedProviders.deepseek.activeModel, "deepseek-v4-pro");
+  assert.equal(settings.managedProviders.deepseek.modelAliases["deepseek-v4-pro"], "gpt-5.6-sol");
+  assert.equal(settings.managedProviders.deepseek.modelAliases["deepseek-v4-flash"], "gpt-5.6-terra");
   assert.equal(settings.managedProviders.deepseek.modelPolicy, "preserve-existing");
   assert.equal(settings.managedProviders.deepseek.reasoningEffort, "max");
   assert.equal(settings.managedProviders.deepseek.reasoningPolicy, "preserve-existing");
@@ -23,7 +25,8 @@ test("the desktop launcher is portable and keeps max reasoning plus live search"
   assert.match(launcher, /CODEX_HANDOFF_ROOT/);
   assert.match(launcher, /Get-DeepSeekModeSetting 'reasoningEffort'/);
   assert.match(launcher, /Get-DeepSeekModeSetting 'webSearch'/);
-  assert.match(launcher, /deepseek-v4-flash', 'deepseek-v4-pro/);
+  assert.match(launcher, /models-deepseek-picker\.json/);
+  assert.match(launcher, /model-name-adapter\.mjs/);
   assert.match(launcher, /'low', 'high', 'max'/);
 });
 

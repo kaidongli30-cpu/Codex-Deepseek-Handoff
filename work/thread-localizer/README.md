@@ -72,6 +72,13 @@ task needs to be moved to a canonical project directory.
   both sticky values, and the next DeepSeek handoff restores that task's last
   combination. A task with no DeepSeek history uses the configured defaults.
 
+Some Codex Desktop releases hide third-party model slugs behind a remote
+allowlist. During DeepSeek mode, the launcher therefore builds a local picker
+catalog with two allowlisted compatibility slugs and starts a loopback-only
+model-name adapter. The adapter changes only the outgoing `model` value back
+to the official DeepSeek slug and streams every other request and response
+field untouched. OpenAI traffic never uses this adapter.
+
 The default is `deepseek-v4-pro + max`. First confirm both exact API slugs and
 their supported reasoning levels in
 `%USERPROFILE%\.codex\model-switcher\models-deepseek.json`. The launcher

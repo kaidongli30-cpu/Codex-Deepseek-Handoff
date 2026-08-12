@@ -9,7 +9,7 @@
 | PowerShell | 7 recommended | The launcher can fall back to Windows PowerShell when necessary. |
 | OpenAI | ChatGPT login mode | Existing task model is preserved when known. |
 | DeepSeek | Official Responses API provider | Complete and test the official Codex setup first; the selected slug must exist in its local model catalog. |
-| DeepSeek models | V4 Pro and V4 Flash | Both exact slugs must exist in the official local model catalog for the native picker. |
+| DeepSeek models | V4 Pro and V4 Flash | Both exact slugs must exist in the official local catalog; the launcher builds a compatibility picker catalog for Desktop releases that filter third-party slugs. |
 | DeepSeek reasoning | `low`, `high`, `max`; `max` default | The current task can change effort in the native picker; handoff remembers it per task. |
 | DeepSeek web search | `live` default | Provider/model support is still required; this setting only enables the request. |
 | Images | Not provided by the handoff layer | Vision support depends on the selected provider model and Codex input path. |
@@ -28,3 +28,8 @@ native task menu. The handoff manifest records the task's last DeepSeek model
 and effort so a later GPT-to-DeepSeek handoff restores them. If a future model
 slug is added, validate the official catalog and app-server schema before
 changing the default.
+
+The compatibility picker uses two allowlisted runtime names only inside
+DeepSeek mode. A loopback-only adapter maps those names to the official
+DeepSeek slugs immediately before the request leaves the computer. It does not
+proxy OpenAI traffic and does not alter request content or response streams.

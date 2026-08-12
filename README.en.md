@@ -489,6 +489,11 @@ Provider defaults live at
 - DeepSeek defaults to `deepseek-v4-pro + max`. While Codex is open in
   DeepSeek mode, the native model menu can switch the current task between
   V4 Pro/V4 Flash and Low/High/Max.
+- Some Codex Desktop versions filter third-party model slugs. The launcher
+  generates two local compatibility entries and, only in DeepSeek mode, runs
+  a loopback-only adapter that changes the outgoing model name back to the
+  official DeepSeek slug. GPT traffic bypasses it, and it does not rewrite
+  message content, tool calls, search records, or response streams.
 - The handoff remembers each task's last DeepSeek model and reasoning effort
   and restores them after a GPT round trip. Only tasks that have never used
   DeepSeek receive the defaults.

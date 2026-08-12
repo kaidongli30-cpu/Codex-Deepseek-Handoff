@@ -39,9 +39,13 @@ export function resolveTargetModel(settings, provider, task = null) {
   if (!providerSettings) throw new Error(`未管理的目标提供商: ${provider}`);
   if (providerSettings.modelPolicy === "preserve-existing") {
     const remembered = task?.providerModels?.[provider];
-    if (remembered) return remembered;
+    if (remembered) return toRuntimeModel(providerSettings, remembered);
   }
-  return providerSettings.activeModel;
+  return toRuntimeModel(providerSettings, providerSettings.activeModel);
+}
+
+function toRuntimeModel(providerSettings, model) {
+  return providerSettings.modelAliases?.[model] || model;
 }
 
 export function resolveTargetReasoningEffort(settings, provider, task = null) {

@@ -432,6 +432,7 @@ npm run dry-run:openai
 
 - OpenAI は `preserve-existing` を使い、タスクが以前使っていた GPT モデルに戻す
 - DeepSeek の既定値は `deepseek-v4-pro + max`。DeepSeek モードで Codex を開いている間は、Codex 標準のモデルメニューから現在のタスクを V4 Pro/V4 Flash と Low/High/Max の間で切り替えられる
+- 一部の Codex Desktop はサードパーティ製モデルの slug を除外するため、ランチャーは2つのローカル互換エントリを生成する。DeepSeek モード中だけ `127.0.0.1` のモデル名アダプターを起動し、送信するモデル名だけを公式 DeepSeek slug に戻す。GPT 通信はこのアダプターを経由せず、メッセージ本文、ツール呼び出し、検索記録、応答ストリームも書き換えない
 - 引き継ぎツールはタスクごとに最後に使用した DeepSeek モデルと思考強度を記憶し、GPT から戻るときに復元する。DeepSeek を一度も使用していないタスクだけが既定値を使う
 - DeepSeek のモデル slug はローカルの公式 `models-deepseek.json` に存在する必要がある
 

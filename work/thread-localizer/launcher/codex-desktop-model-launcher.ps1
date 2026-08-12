@@ -78,9 +78,12 @@ function Resolve-ModelSwitcherRoot {
 $handoffToolRoot = Resolve-HandoffToolRoot
 $modelSwitcherRoot = Resolve-ModelSwitcherRoot
 $modelsPath = Join-Path $modelSwitcherRoot 'models-deepseek.json'
+$pickerModelsPath = Join-Path $modelSwitcherRoot 'models-deepseek-picker.json'
 $keyHelperPath = Join-Path $modelSwitcherRoot 'get-deepseek-key.ps1'
 $handoffCliPath = Join-Path $handoffToolRoot 'src\cli.mjs'
 $handoffSettingsPath = Join-Path $handoffToolRoot 'data\handoff-settings.json'
+$catalogBuilderPath = Join-Path $handoffToolRoot 'src\build-picker-catalog.mjs'
+$modelAdapterPath = Join-Path $handoffToolRoot 'src\model-name-adapter.mjs'
 
 function Show-LauncherMessage {
     param(
@@ -148,11 +151,13 @@ function Get-HandoffSettings {
 }
 
 function Get-ValidatedDeepSeekCatalog {
-    $catalog = Get-Content -LiteralPath $modelsPath -Raw -Encoding UTF8 | ConvertFrom-Json
-    foreach ($slug in @('deepseek-v4-flash', 'deepseek-v4-pro')) {
+    $catalog = Get-Content -LiteralPath $pickerModelsPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    $settings = Get-HandoffSettings
+    $aliases = $settings.managedProviders.deepseek.modelAliases
+    foreach ($slug in @($aliases.PSObject.Properties | ForEach-Object { [string]$_.Value })) {
         $entry = @($catalog.models | Where-Object { [string]$_.slug -eq $slug }) | Select-Object -First 1
         if (-not $entry) {
-            throw "DeepSeek 官方模型目录缺少 $slug，无法提供完整的任务内模型选择菜单：$modelsPath"
+            throw "DeepSeek 选择器目录缺少 $slug，无法提供完整的任务内模型选择菜单：$pickerModelsPath"
         }
         $levels = @($entry.supported_reasoning_levels | ForEach-Object { [string]$_.effort })
         $missingLevels = @(@('low', 'high', 'max') | Where-Object { $_ -notin $levels })
@@ -173,12 +178,31 @@ function Get-ActiveModel {
     $activeModel = [string]$property.Value.activeModel
     if ($TargetProvider -eq 'deepseek') {
         $catalog = Get-ValidatedDeepSeekCatalog
+        $aliasProperty = $property.Value.modelAliases.PSObject.Properties[$activeModel]
+        if (-not $aliasProperty) {
+            throw "DeepSeek 活动模型 $activeModel 没有配置界面兼容名称。"
+        }
+        $activeModel = [string]$aliasProperty.Value
         $catalogModels = @($catalog.models | ForEach-Object { [string]$_.slug })
         if ($activeModel -notin $catalogModels) {
-            throw "DeepSeek 活动模型 $activeModel 不在模型目录 $modelsPath 中。"
+            throw "DeepSeek 活动模型 $activeModel 不在选择器目录 $pickerModelsPath 中。"
         }
     }
     return $activeModel
+}
+
+function Build-DeepSeekPickerCatalog {
+    $arguments = @(
+        $catalogBuilderPath,
+        '--source', $modelsPath,
+        '--settings', $handoffSettingsPath,
+        '--output', $pickerModelsPath
+    )
+    $process = Start-Process -FilePath (Find-NodeExecutable) -ArgumentList $arguments -WindowStyle Hidden -Wait -PassThru
+    if ($process.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $pickerModelsPath -PathType Leaf)) {
+        throw '生成 DeepSeek 任务内模型选择目录失败。'
+    }
+    $null = Get-ValidatedDeepSeekCatalog
 }
 
 function Get-DeepSeekModeSetting {
@@ -194,6 +218,60 @@ function Get-DeepSeekModeSetting {
         throw "DeepSeek 配置缺少 $Name。请在 handoff-settings.json 中明确设置。"
     }
     return $value
+}
+
+function Get-ModelAdapterSetting {
+    param([string]$Name)
+    $settings = Get-HandoffSettings
+    $adapter = $settings.managedProviders.deepseek.modelAdapter
+    $property = if ($adapter) { $adapter.PSObject.Properties[$Name] } else { $null }
+    if (-not $property -or $null -eq $property.Value -or [string]$property.Value -eq '') {
+        throw "DeepSeek modelAdapter 配置缺少 $Name。"
+    }
+    return $property.Value
+}
+
+function Start-ModelNameAdapter {
+    New-Item -ItemType Directory -Path $handoffLogRoot -Force | Out-Null
+    $port = [int](Get-ModelAdapterSetting 'port')
+    $upstream = [string](Get-ModelAdapterSetting 'upstreamBaseUrl')
+    $healthUrl = "http://127.0.0.1:$port/__handoff_model_adapter_health"
+    try {
+        $existing = Invoke-RestMethod -Uri $healthUrl -TimeoutSec 1
+        if ($existing.product -eq 'Codex-DeepSeek-Handoff model-name-adapter') {
+            return [pscustomobject]@{ Process = $null; Owned = $false; Port = $port }
+        }
+        throw "端口 $port 已被其他程序占用。"
+    } catch {
+        if ($_.Exception.Message -like "端口 $port 已被其他程序占用。") { throw }
+    }
+
+    $adapterTimestamp = Get-Date -Format 'yyyyMMdd-HHmmss-fff'
+    $stdoutPath = Join-Path $handoffLogRoot "model-adapter.$adapterTimestamp.stdout.txt"
+    $stderrPath = Join-Path $handoffLogRoot "model-adapter.$adapterTimestamp.stderr.txt"
+    $arguments = @(
+        $modelAdapterPath,
+        '--port', [string]$port,
+        '--upstream', $upstream,
+        '--settings', $handoffSettingsPath,
+        '--parent-pid', [string]$PID
+    )
+    $process = Start-Process -FilePath (Find-NodeExecutable) -ArgumentList $arguments -WindowStyle Hidden -PassThru `
+        -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
+    for ($attempt = 0; $attempt -lt 40; $attempt++) {
+        if ($process.HasExited) { break }
+        try {
+            $health = Invoke-RestMethod -Uri $healthUrl -TimeoutSec 1
+            if ($health.product -eq 'Codex-DeepSeek-Handoff model-name-adapter') {
+                return [pscustomobject]@{ Process = $process; Owned = $true; Port = $port }
+            }
+        } catch {
+            Start-Sleep -Milliseconds 250
+        }
+    }
+    $details = if (Test-Path -LiteralPath $stderrPath) { (Get-Content -LiteralPath $stderrPath -Tail 5) -join [Environment]::NewLine } else { '' }
+    if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue }
+    throw "DeepSeek 模型名称适配器启动失败。`n$details"
 }
 
 function Invoke-BatchHandoff {
@@ -285,7 +363,7 @@ function New-ModeBlock {
         $lines.Add('model_reasoning_effort = "high"')
         $lines.Add('forced_login_method = "chatgpt"')
     } else {
-        $catalog = $modelsPath -replace '\\', '/'
+        $catalog = $pickerModelsPath -replace '\\', '/'
         $lines.Add("model = `"$(Get-ActiveModel 'deepseek')`"")
         $lines.Add('model_provider = "deepseek"')
         $lines.Add("model_reasoning_effort = `"$(Get-DeepSeekModeSetting 'reasoningEffort')`"")
@@ -313,7 +391,21 @@ function Set-CandidateMode {
     }
 
     $replacement = New-ModeBlock $Mode
-    return [regex]::Replace($RawConfig, $pattern, $replacement, 1)
+    $candidate = [regex]::Replace($RawConfig, $pattern, $replacement, 1)
+    $adapterPort = [int](Get-ModelAdapterSetting 'port')
+    $baseUrl = if ($Mode -eq 'deepseek') {
+        "http://127.0.0.1:$adapterPort/"
+    } else {
+        [string](Get-ModelAdapterSetting 'upstreamBaseUrl')
+    }
+    $providerPattern = '(?ms)(^\s*\[model_providers\.deepseek\]\s*\r?\n)(.*?)(?=^\s*\[|\z)'
+    $providerMatch = [regex]::Match($candidate, $providerPattern)
+    if (-not $providerMatch.Success) { throw '找不到 [model_providers.deepseek] 配置区块。' }
+    $providerBody = $providerMatch.Groups[2].Value
+    $baseUrlMatches = [regex]::Matches($providerBody, '(?m)^\s*base_url\s*=.*$')
+    if ($baseUrlMatches.Count -ne 1) { throw 'DeepSeek provider 应当恰好包含一个 base_url。' }
+    $newBody = [regex]::Replace($providerBody, '(?m)^\s*base_url\s*=.*$', "base_url = `"$baseUrl`"", 1)
+    return $candidate.Substring(0, $providerMatch.Groups[2].Index) + $newBody + $candidate.Substring($providerMatch.Groups[2].Index + $providerMatch.Groups[2].Length)
 }
 
 function Test-CandidateConfig {
@@ -446,6 +538,7 @@ $requestMutex = $null
 $requestMutexAcquired = $false
 $handoffMutex = $null
 $handoffMutexAcquired = $false
+$modelAdapter = $null
 
 try {
     if (-not $ValidateOnly) {
@@ -473,9 +566,10 @@ try {
         }
     }
 
-    foreach ($required in @($configPath, $modelsPath, $keyHelperPath, $handoffSettingsPath)) {
+    foreach ($required in @($configPath, $modelsPath, $keyHelperPath, $handoffSettingsPath, $catalogBuilderPath, $modelAdapterPath)) {
         if (-not (Test-Path -LiteralPath $required)) { throw "缺少必需文件：$required" }
     }
+    Build-DeepSeekPickerCatalog
 
     $rawConfig = Get-Content -LiteralPath $configPath -Raw -Encoding UTF8
     $candidate = Set-CandidateMode -RawConfig $rawConfig -Mode $Provider
@@ -517,6 +611,9 @@ Codex 桌面应用仍在运行。
     [IO.File]::Replace($temporaryConfig, $configPath, $backupPath, $true)
 
     try {
+        if ($Provider -eq 'deepseek') {
+            $modelAdapter = Start-ModelNameAdapter
+        }
         $null = Invoke-BatchHandoff -TargetProvider $Provider
         $savedErrorActionPreference = $ErrorActionPreference
         $ErrorActionPreference = 'Continue'
@@ -549,6 +646,9 @@ Codex 桌面应用仍在运行。
     }
     exit 1
 } finally {
+    if ($null -ne $modelAdapter -and $modelAdapter.Owned -and $null -ne $modelAdapter.Process -and -not $modelAdapter.Process.HasExited) {
+        Stop-Process -Id $modelAdapter.Process.Id -Force -ErrorAction SilentlyContinue
+    }
     if ($handoffMutexAcquired -and $null -ne $handoffMutex) {
         $handoffMutex.ReleaseMutex()
     }
