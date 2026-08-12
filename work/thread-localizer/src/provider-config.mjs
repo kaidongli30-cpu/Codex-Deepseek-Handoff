@@ -10,16 +10,20 @@ export async function readHandoffSettings() {
     if (!config?.activeModel || !["global", "preserve-existing"].includes(config.modelPolicy)) {
       throw new Error(`提供商 ${provider} 缺少 activeModel 或 modelPolicy 无效`);
     }
+    if (config.reasoningPolicy && !["global", "preserve-existing"].includes(config.reasoningPolicy)) {
+      throw new Error(`提供商 ${provider} 的 reasoningPolicy 无效`);
+    }
   }
   return settings;
 }
 
-export function appServerProviderOverrides(provider, model, settings = null) {
+export function appServerProviderOverrides(provider, model, reasoningEffort = null, settings = null) {
   const providerSettings = settings?.managedProviders?.[provider] || null;
   const overrides = {
     model_provider: provider,
   };
   if (model) overrides.model = model;
+  if (reasoningEffort) overrides.model_reasoning_effort = reasoningEffort;
   if (providerSettings?.forcedLoginMethod) {
     overrides.forced_login_method = providerSettings.forcedLoginMethod;
   } else if (provider === "deepseek") {
@@ -38,6 +42,16 @@ export function resolveTargetModel(settings, provider, task = null) {
     if (remembered) return remembered;
   }
   return providerSettings.activeModel;
+}
+
+export function resolveTargetReasoningEffort(settings, provider, task = null) {
+  const providerSettings = settings.managedProviders?.[provider];
+  if (!providerSettings) throw new Error(`未管理的目标提供商: ${provider}`);
+  if (providerSettings.reasoningPolicy === "preserve-existing") {
+    const remembered = task?.providerReasoningEfforts?.[provider];
+    if (remembered) return remembered;
+  }
+  return providerSettings.reasoningEffort || null;
 }
 
 export function normalizeCwd(value) {

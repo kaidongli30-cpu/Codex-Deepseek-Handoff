@@ -32,9 +32,11 @@ forking keeps the server's own thread metadata and lineage intact.
 ## Provider boundary
 
 OpenAI tasks use `preserve-existing`, so a task that previously used a selected
-GPT model can return to that model. DeepSeek uses `global`, so its active model
-in `handoff-settings.json` applies to all managed DeepSeek batons on the next
-handoff. Model catalog entries are checked before the launcher opens Codex.
+GPT model can return to that model. DeepSeek stores per-task model and reasoning
+effort preferences, so a task can return to its last DeepSeek combination after
+a GPT round trip. The configured `deepseek-v4-pro + max` combination is only the
+fallback for tasks without DeepSeek history. Model catalog entries are checked
+before the launcher opens Codex.
 
 The desktop launcher is a gate around the CLI. It acquires a per-user lock,
 waits for Codex to exit, runs the batch handoff, and opens the same desktop app

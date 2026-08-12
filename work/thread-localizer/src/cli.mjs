@@ -47,6 +47,7 @@ async function main() {
       sourceThreadId: options["source-thread-id"],
       targetProvider,
       targetModel: options["target-model"] || (targetProvider === "deepseek" ? DEEPSEEK_MODEL : null),
+      targetReasoningEffort: options["target-reasoning-effort"] || null,
       targetName: options.name,
       testMode: options["test-mode"] === true || options["test-mode"] === "true",
     }));
@@ -61,6 +62,7 @@ async function main() {
       execute: command === "rolling-handoff",
       targetProvider,
       targetModel: options["target-model"] || (targetProvider === "deepseek" ? DEEPSEEK_MODEL : "gpt-5.6-sol"),
+      targetReasoningEffort: options["target-reasoning-effort"] || null,
     }));
     return;
   }
@@ -73,6 +75,9 @@ async function main() {
       configOverrides: provider === "deepseek" ? {
         model_provider: "deepseek",
         model: options.model || DEEPSEEK_MODEL,
+        ...(options["reasoning-effort"]
+          ? { model_reasoning_effort: options["reasoning-effort"] }
+          : {}),
         forced_login_method: "api",
       } : {},
     });

@@ -67,15 +67,17 @@ task needs to be moved to a canonical project directory.
 - OpenAI uses `preserve-existing`, so a task that used Luna returns to Luna and
   a task that used Sol returns to Sol. A DeepSeek-originated task with no prior
   OpenAI model uses the configured OpenAI default.
-- DeepSeek uses `global`, so changing `activeModel` upgrades all tracked tasks
-  on their next DeepSeek handoff.
+- DeepSeek uses `preserve-existing`. Codex's native in-thread picker can switch
+  a DeepSeek task between V4 Pro/V4 Flash and Low/High/Max. Discovery records
+  both sticky values, and the next DeepSeek handoff restores that task's last
+  combination. A task with no DeepSeek history uses the configured defaults.
 
-For a future DeepSeek model change, first add or confirm its exact API slug in
-`%USERPROFILE%\.codex\model-switcher\models-deepseek.json`, then change only
-`managedProviders.deepseek.activeModel` in `data/handoff-settings.json`. The
-launcher refuses to start if the active slug is missing from the catalog.
-Changing from one DeepSeek model to another is treated as a real handoff even
-though the provider id is unchanged.
+The default is `deepseek-v4-pro + max`. First confirm both exact API slugs and
+their supported reasoning levels in
+`%USERPROFILE%\.codex\model-switcher\models-deepseek.json`. The launcher
+refuses to start if the default slug is missing. Switching model or effort in
+the open Codex task changes subsequent turns in place; no handoff copy is
+created merely for an in-thread DeepSeek setting change.
 
 ## Managed scope
 

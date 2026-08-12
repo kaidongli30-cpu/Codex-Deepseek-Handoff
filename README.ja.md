@@ -431,7 +431,8 @@ npm run dry-run:openai
 [work/thread-localizer/data/handoff-settings.json](work/thread-localizer/data/handoff-settings.json)
 
 - OpenAI は `preserve-existing` を使い、タスクが以前使っていた GPT モデルに戻す
-- DeepSeek は `global` を使う。`activeModel` を変更すると次回の引き継ぎで新しいモデルを使う
+- DeepSeek の既定値は `deepseek-v4-pro + max`。DeepSeek モードで Codex を開いている間は、Codex 標準のモデルメニューから現在のタスクを V4 Pro/V4 Flash と Low/High/Max の間で切り替えられる
+- 引き継ぎツールはタスクごとに最後に使用した DeepSeek モデルと思考強度を記憶し、GPT から戻るときに復元する。DeepSeek を一度も使用していないタスクだけが既定値を使う
 - DeepSeek のモデル slug はローカルの公式 `models-deepseek.json` に存在する必要がある
 
 ### 関連ドキュメント

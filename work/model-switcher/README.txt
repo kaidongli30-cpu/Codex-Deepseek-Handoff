@@ -19,10 +19,11 @@ The two handoff shortcuts open the same
 installed Codex desktop application. They do not open a terminal task picker.
 
 DeepSeek shortcut:
-  - model: deepseek-v4-flash (change the catalog and handoff settings together)
+  - default model: deepseek-v4-pro
+  - in-thread models: deepseek-v4-pro and deepseek-v4-flash (native Codex picker)
   - provider: https://api.deepseek.com/ using the Responses API
   - forced login method: API
-  - default reasoning effort: max
+  - default reasoning effort: max (native picker also exposes low/high/max)
   - web search request: live
 
 After the DeepSeek Codex app fully exits, the hidden launcher automatically

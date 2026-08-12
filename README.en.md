@@ -486,8 +486,12 @@ Provider defaults live at
 
 - OpenAI uses `preserve-existing`, returning to the GPT model the task used
   before.
-- DeepSeek uses `global`; after changing `activeModel`, the next handoff uses
-  the new model.
+- DeepSeek defaults to `deepseek-v4-pro + max`. While Codex is open in
+  DeepSeek mode, the native model menu can switch the current task between
+  V4 Pro/V4 Flash and Low/High/Max.
+- The handoff remembers each task's last DeepSeek model and reasoning effort
+  and restores them after a GPT round trip. Only tasks that have never used
+  DeepSeek receive the defaults.
 - The DeepSeek model slug must exist in the local official
   `models-deepseek.json`.
 

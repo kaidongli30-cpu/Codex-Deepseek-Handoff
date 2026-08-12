@@ -9,9 +9,10 @@ const repoRoot = path.resolve(toolRoot, "..", "..");
 
 test("handoff settings keep the provider defaults required by the product", () => {
   const settings = JSON.parse(fs.readFileSync(path.join(toolRoot, "data", "handoff-settings.json"), "utf8"));
-  assert.equal(settings.managedProviders.deepseek.activeModel, "deepseek-v4-flash");
-  assert.equal(settings.managedProviders.deepseek.modelPolicy, "global");
+  assert.equal(settings.managedProviders.deepseek.activeModel, "deepseek-v4-pro");
+  assert.equal(settings.managedProviders.deepseek.modelPolicy, "preserve-existing");
   assert.equal(settings.managedProviders.deepseek.reasoningEffort, "max");
+  assert.equal(settings.managedProviders.deepseek.reasoningPolicy, "preserve-existing");
   assert.equal(settings.managedProviders.deepseek.webSearch, "live");
   assert.equal(settings.managedProviders.openai.modelPolicy, "preserve-existing");
 });
@@ -22,6 +23,8 @@ test("the desktop launcher is portable and keeps max reasoning plus live search"
   assert.match(launcher, /CODEX_HANDOFF_ROOT/);
   assert.match(launcher, /Get-DeepSeekModeSetting 'reasoningEffort'/);
   assert.match(launcher, /Get-DeepSeekModeSetting 'webSearch'/);
+  assert.match(launcher, /deepseek-v4-flash', 'deepseek-v4-pro/);
+  assert.match(launcher, /'low', 'high', 'max'/);
 });
 
 test("the key helper resolves its secret beside the installed tool", () => {

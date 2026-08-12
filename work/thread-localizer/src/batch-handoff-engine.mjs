@@ -15,6 +15,7 @@ import {
   normalizeCwd,
   readHandoffSettings,
   resolveTargetModel,
+  resolveTargetReasoningEffort,
 } from "./provider-config.mjs";
 import { loadAndValidateSchema } from "./schema-guard.mjs";
 import {
@@ -90,7 +91,7 @@ export async function discoverLocalTasks(settings = null) {
   const resolvedSettings = settings || await readHandoffSettings();
   const threads = await listAllInteractiveThreads();
   const db = new DatabaseSync(path.join(CODEX_HOME, "state_5.sqlite"), { readOnly: true });
-  const statement = db.prepare(`SELECT id, name, title, model_provider, model, cwd, rollout_path,
+  const statement = db.prepare(`SELECT id, name, title, model_provider, model, reasoning_effort, cwd, rollout_path,
     thread_source, archived, is_pinned FROM threads WHERE id = ?`);
   try {
     return threads.map((thread) => {
@@ -102,6 +103,7 @@ export async function discoverLocalTasks(settings = null) {
         explicitName: thread.name || row.name || null,
         provider: thread.modelProvider || row.model_provider || null,
         model: row.model || null,
+        reasoningEffort: row.reasoning_effort || null,
         cwd: mapProjectCwd(resolvedSettings, thread.cwd || row.cwd),
         originalCwd: normalizeCwd(thread.cwd || row.cwd),
         rolloutPath: thread.path || row.rollout_path || null,
@@ -153,7 +155,11 @@ function mergeDiscoveredTasks(manifest, discovered, legacyManifest) {
         currentThreadId: item.id,
         currentProvider: item.provider,
         currentModel: item.model,
+        currentReasoningEffort: item.reasoningEffort,
         providerModels: item.model ? { [item.provider]: item.model } : {},
+        providerReasoningEfforts: item.reasoningEffort
+          ? { [item.provider]: item.reasoningEffort }
+          : {},
         enrolledAt: nowIso(),
         enrolledFrom: item.id === legacyCurrentId ? "legacy-single-task-manifest" : "auto-discovery",
         lastSeenAt: nowIso(),
@@ -168,8 +174,11 @@ function mergeDiscoveredTasks(manifest, discovered, legacyManifest) {
       task.isPinned = item.isPinned;
       task.currentProvider = item.provider;
       task.currentModel = item.model;
+      task.currentReasoningEffort = item.reasoningEffort;
       task.providerModels = { ...(task.providerModels || {}) };
       if (item.model) task.providerModels[item.provider] = item.model;
+      task.providerReasoningEfforts = { ...(task.providerReasoningEfforts || {}) };
+      if (item.reasoningEffort) task.providerReasoningEfforts[item.provider] = item.reasoningEffort;
       task.lastSeenAt = nowIso();
       task.lastError = null;
     }
@@ -240,14 +249,17 @@ export async function buildBatchHandoffPlan({ targetProvider, onlyTaskId = null 
       || task.stableTaskId === onlyTaskId
       || task.currentThreadId === onlyTaskId;
     const targetModel = resolveTargetModel(settings, targetProvider, task);
+    const targetReasoningEffort = resolveTargetReasoningEffort(settings, targetProvider, task);
     const common = {
       stableTaskId: task.stableTaskId,
       sourceThreadId: task.currentThreadId,
       displayName: task.displayName,
       sourceProvider: task.currentProvider,
       sourceModel: task.currentModel,
+      sourceReasoningEffort: task.currentReasoningEffort || null,
       targetProvider,
       targetModel,
+      targetReasoningEffort,
       cwd: task.canonicalCwd,
       isPinned: task.isPinned,
       pinning: {
@@ -262,7 +274,11 @@ export async function buildBatchHandoffPlan({ targetProvider, onlyTaskId = null 
       items.push({ ...common, action: "skip", reason: "not-selected" });
       continue;
     }
-    if (task.currentProvider === targetProvider && task.currentModel === targetModel) {
+    if (
+      task.currentProvider === targetProvider
+      && task.currentModel === targetModel
+      && (!targetReasoningEffort || task.currentReasoningEffort === targetReasoningEffort)
+    ) {
       items.push({ ...common, action: "noop", reason: "already-on-target-provider-and-model" });
       continue;
     }
@@ -306,6 +322,7 @@ export async function buildBatchHandoffPlan({ targetProvider, onlyTaskId = null 
     generatedAt: nowIso(),
     targetProvider,
     targetModel: settings.managedProviders[targetProvider].activeModel,
+    targetReasoningEffort: settings.managedProviders[targetProvider].reasoningEffort || null,
     onlyTaskId,
     schema: {
       sha256: schema.schemaSha256,
@@ -377,6 +394,7 @@ export async function batchHandoff({ targetProvider, onlyTaskId = null, execute 
         sourceThreadId: item.sourceThreadId,
         targetProvider: item.targetProvider,
         targetModel: item.targetModel,
+        targetReasoningEffort: item.targetReasoningEffort,
         targetName: task.explicitName || task.displayName,
         pinTarget: item.isPinned,
         recordManifest: false,
@@ -390,8 +408,15 @@ export async function batchHandoff({ targetProvider, onlyTaskId = null, execute 
       task.currentThreadId = result.entry.targetThreadId;
       task.currentProvider = item.targetProvider;
       task.currentModel = item.targetModel;
+      task.currentReasoningEffort = item.targetReasoningEffort;
       task.canonicalCwd = item.cwd;
       task.providerModels = { ...(task.providerModels || {}), [item.targetProvider]: item.targetModel };
+      task.providerReasoningEfforts = {
+        ...(task.providerReasoningEfforts || {}),
+        ...(item.targetReasoningEffort
+          ? { [item.targetProvider]: item.targetReasoningEffort }
+          : {}),
+      };
       task.lastSeenAt = nowIso();
       task.lastError = null;
       task.handoffs = [
@@ -409,6 +434,7 @@ export async function batchHandoff({ targetProvider, onlyTaskId = null, execute 
         sourceProvider: item.sourceProvider,
         targetProvider: item.targetProvider,
         targetModel: item.targetModel,
+        targetReasoningEffort: item.targetReasoningEffort,
         cwd: item.cwd,
         checks: result.entry.checks,
         normalization: result.entry.normalization,

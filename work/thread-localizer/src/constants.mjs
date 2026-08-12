@@ -7,7 +7,7 @@ export const PROJECT_ROOT = path.resolve(TOOL_ROOT, "..", "..");
 
 export const DEFAULT_PROVIDER = "openai";
 export const DEEPSEEK_PROVIDER = "deepseek";
-export const DEEPSEEK_MODEL = "deepseek-v4-flash";
+export const DEEPSEEK_MODEL = "deepseek-v4-pro";
 export const USER_THREAD_SOURCE = "user";
 
 export const CODEX_HOME = path.resolve(

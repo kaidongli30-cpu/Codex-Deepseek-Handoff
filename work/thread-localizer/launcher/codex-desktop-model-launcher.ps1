@@ -147,6 +147,22 @@ function Get-HandoffSettings {
     return Get-Content -LiteralPath $handoffSettingsPath -Raw -Encoding UTF8 | ConvertFrom-Json
 }
 
+function Get-ValidatedDeepSeekCatalog {
+    $catalog = Get-Content -LiteralPath $modelsPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    foreach ($slug in @('deepseek-v4-flash', 'deepseek-v4-pro')) {
+        $entry = @($catalog.models | Where-Object { [string]$_.slug -eq $slug }) | Select-Object -First 1
+        if (-not $entry) {
+            throw "DeepSeek 官方模型目录缺少 $slug，无法提供完整的任务内模型选择菜单：$modelsPath"
+        }
+        $levels = @($entry.supported_reasoning_levels | ForEach-Object { [string]$_.effort })
+        $missingLevels = @(@('low', 'high', 'max') | Where-Object { $_ -notin $levels })
+        if ($missingLevels.Count -gt 0) {
+            throw "DeepSeek 模型 $slug 缺少思考强度 $($missingLevels -join ', ')：$modelsPath"
+        }
+    }
+    return $catalog
+}
+
 function Get-ActiveModel {
     param([string]$TargetProvider)
     $settings = Get-HandoffSettings
@@ -156,7 +172,7 @@ function Get-ActiveModel {
     }
     $activeModel = [string]$property.Value.activeModel
     if ($TargetProvider -eq 'deepseek') {
-        $catalog = Get-Content -LiteralPath $modelsPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        $catalog = Get-ValidatedDeepSeekCatalog
         $catalogModels = @($catalog.models | ForEach-Object { [string]$_.slug })
         if ($activeModel -notin $catalogModels) {
             throw "DeepSeek 活动模型 $activeModel 不在模型目录 $modelsPath 中。"

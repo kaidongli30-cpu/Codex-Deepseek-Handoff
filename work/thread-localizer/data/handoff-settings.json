@@ -7,10 +7,11 @@
       "forcedLoginMethod": "chatgpt"
     },
     "deepseek": {
-      "activeModel": "deepseek-v4-flash",
-      "modelPolicy": "global",
+      "activeModel": "deepseek-v4-pro",
+      "modelPolicy": "preserve-existing",
       "forcedLoginMethod": "api",
       "reasoningEffort": "max",
+      "reasoningPolicy": "preserve-existing",
       "webSearch": "live"
     }
   },

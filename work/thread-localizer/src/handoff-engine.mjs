@@ -22,7 +22,7 @@ export function stateRow(threadId) {
   const db = new DatabaseSync(`${CODEX_HOME}\\state_5.sqlite`, { readOnly: true });
   try {
     return db.prepare(`SELECT id, name, title, model_provider, model, cwd, rollout_path,
-      thread_source, archived, is_pinned FROM threads WHERE id = ?`).get(threadId) || null;
+      reasoning_effort, thread_source, archived, is_pinned FROM threads WHERE id = ?`).get(threadId) || null;
   } finally {
     db.close();
   }
@@ -91,6 +91,7 @@ export async function buildHandoffPlan({
   sourceThreadId,
   targetProvider,
   targetModel = null,
+  targetReasoningEffort = null,
   targetName = null,
   testMode = false,
   pinTarget = false,
@@ -115,6 +116,8 @@ export async function buildHandoffPlan({
     ? (manifest.handoffs || []).find((entry) => (
         entry.sourceThreadId === sourceThreadId
         && entry.targetProvider === targetProvider
+        && (!targetModel || entry.targetModel === targetModel)
+        && (!targetReasoningEffort || entry.targetReasoningEffort === targetReasoningEffort)
         && entry.sourceRolloutSha256 === sourceRollout.rolloutSha256
       )) || null
     : null;
@@ -127,6 +130,7 @@ export async function buildHandoffPlan({
       name: sourceVerification.name,
       provider: sourceDatabase.model_provider,
       model: sourceDatabase.model,
+      reasoningEffort: sourceDatabase.reasoning_effort || null,
       cwd: sourceVerification.cwd,
       rolloutPath: sourceRollout.rolloutPath,
       rolloutSha256: sourceRollout.rolloutSha256,
@@ -140,6 +144,7 @@ export async function buildHandoffPlan({
     target: {
       provider: targetProvider,
       model: targetModel,
+      reasoningEffort: targetReasoningEffort,
       name: targetName || sourceVerification.name || sourceDatabase.name || null,
       cwd: sourceVerification.cwd,
       threadSource: USER_THREAD_SOURCE,
@@ -176,7 +181,11 @@ export async function handoffOne(options) {
   const backup = await createTimestampedBackup({ sourceRolloutPath: plan.source.rolloutPath });
   const client = await createAppServerClient({
     cwd: PROJECT_CWD,
-    configOverrides: appServerProviderOverrides(plan.target.provider, plan.target.model),
+    configOverrides: appServerProviderOverrides(
+      plan.target.provider,
+      plan.target.model,
+      plan.target.reasoningEffort,
+    ),
   });
   let forkResult;
   let targetThreadId;
@@ -189,7 +198,7 @@ export async function handoffOne(options) {
   };
   try {
     try {
-      forkResult = await client.request("thread/fork", {
+      const forkParams = {
         threadId: plan.source.threadId,
         cwd: plan.target.cwd,
         modelProvider: plan.target.provider,
@@ -197,7 +206,11 @@ export async function handoffOne(options) {
         threadSource: plan.target.threadSource,
         excludeTurns: false,
         deferGoalContinuation: true,
-      });
+      };
+      if (plan.target.reasoningEffort) {
+        forkParams.config = { model_reasoning_effort: plan.target.reasoningEffort };
+      }
+      forkResult = await client.request("thread/fork", forkParams);
       targetThreadId = responseThread(forkResult)?.id || forkResult?.threadId || forkResult?.id || null;
       if (!targetThreadId) throw new Error("thread/fork 没有返回目标任务 ID");
       if (plan.target.name) {
@@ -231,6 +244,9 @@ export async function handoffOne(options) {
     newThreadId: targetThreadId !== plan.source.threadId,
     provider: targetDatabase?.model_provider === plan.target.provider,
     model: plan.target.model ? targetDatabase?.model === plan.target.model : true,
+    reasoningEffort: plan.target.reasoningEffort
+      ? targetDatabase?.reasoning_effort === plan.target.reasoningEffort
+      : true,
     threadSource: targetDatabase?.thread_source === USER_THREAD_SOURCE,
     cwd: verification.cwd === plan.source.cwd,
     turnCount: verification.turnCount === plan.source.turnCount,
@@ -267,6 +283,7 @@ export async function handoffOne(options) {
     targetThreadId,
     targetProvider: plan.target.provider,
     targetModel: plan.target.model,
+    targetReasoningEffort: plan.target.reasoningEffort,
     targetName: plan.target.name,
     cwd: plan.target.cwd,
     handedOffAt: nowIso(),
@@ -328,7 +345,12 @@ export async function archiveTestThread(threadId, provider, model = null) {
   };
 }
 
-export async function rollingHandoff({ targetProvider, targetModel = null, execute = false }) {
+export async function rollingHandoff({
+  targetProvider,
+  targetModel = null,
+  targetReasoningEffort = null,
+  execute = false,
+}) {
   const { manifest } = await readManifest(false);
   const sourceThreadId = manifest.currentThreadId;
   const sourceProvider = manifest.currentProvider;
@@ -348,6 +370,7 @@ export async function rollingHandoff({ targetProvider, targetModel = null, execu
     sourceThreadId,
     targetProvider,
     targetModel: resolvedTargetModel,
+    targetReasoningEffort,
     targetName: manifest.taskName || "保持模型互通",
     testMode: false,
     pinTarget: manifest.pinTarget !== false,

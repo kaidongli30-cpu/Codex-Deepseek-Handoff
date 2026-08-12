@@ -9,7 +9,8 @@
 | PowerShell | 7 recommended | The launcher can fall back to Windows PowerShell when necessary. |
 | OpenAI | ChatGPT login mode | Existing task model is preserved when known. |
 | DeepSeek | Official Responses API provider | Complete and test the official Codex setup first; the selected slug must exist in its local model catalog. |
-| DeepSeek reasoning | `max` default | The launcher writes this value into its managed config block. |
+| DeepSeek models | V4 Pro and V4 Flash | Both exact slugs must exist in the official local model catalog for the native picker. |
+| DeepSeek reasoning | `low`, `high`, `max`; `max` default | The current task can change effort in the native picker; handoff remembers it per task. |
 | DeepSeek web search | `live` default | Provider/model support is still required; this setting only enables the request. |
 | Images | Not provided by the handoff layer | Vision support depends on the selected provider model and Codex input path. |
 
@@ -21,8 +22,9 @@ mismatch, preserve the report and stop before changing task state.
 
 ## Model changes
 
-To move from `deepseek-v4-flash` to another official Responses API model, add
-the exact provider slug to the local `models-deepseek.json`, validate its
-supported capabilities, then change only `activeModel` in
-`data/handoff-settings.json`. The next DeepSeek handoff creates a new baton;
-existing OpenAI model memory is not overwritten.
+The default is `deepseek-v4-pro + max`. With the current official catalog,
+Codex exposes both V4 Pro/V4 Flash and their supported reasoning levels in the
+native task menu. The handoff manifest records the task's last DeepSeek model
+and effort so a later GPT-to-DeepSeek handoff restores them. If a future model
+slug is added, validate the official catalog and app-server schema before
+changing the default.

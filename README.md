@@ -458,7 +458,10 @@ npm run dry-run:openai
 [work/thread-localizer/data/handoff-settings.json](work/thread-localizer/data/handoff-settings.json)
 
 - OpenAI 使用 `preserve-existing`，尽量回到任务此前使用的 GPT 模型。
-- DeepSeek 使用 `global`，修改 `activeModel` 后，下一次交接使用新模型。
+- DeepSeek 默认使用 `deepseek-v4-pro + max`。进入 DeepSeek 模式后，可在 Codex
+  原生模型菜单中为当前任务切换 V4 Pro/V4 Flash 与 Low/High/Max。
+- 交接器会记住每个任务最后使用的 DeepSeek 模型和思考强度；下次从 GPT 交接
+  回来时优先恢复。只有从未使用过 DeepSeek 的任务才采用默认值。
 - DeepSeek 模型 slug 必须存在于本机官方 `models-deepseek.json` 中。
 
 ### 进一步阅读
