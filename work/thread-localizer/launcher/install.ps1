@@ -84,6 +84,11 @@ if (-not (Test-Path -LiteralPath $keyHelperDestination -PathType Leaf)) {
     Copy-FileChecked (Join-Path $modelSource 'get-deepseek-key.ps1') $keyHelperDestination
 }
 Copy-DirectoryChecked (Join-Path $threadSource 'src') (Join-Path $InstallRoot 'thread-localizer\src')
+$obsoleteTaskBackupModule = Join-Path $InstallRoot 'thread-localizer\src\backup.mjs'
+if ((Test-Path -LiteralPath $obsoleteTaskBackupModule -PathType Leaf) -and
+    $PSCmdlet.ShouldProcess($obsoleteTaskBackupModule, '移除旧版累计任务备份模块')) {
+    Remove-Item -LiteralPath $obsoleteTaskBackupModule -Force
+}
 Copy-FileChecked (Join-Path $threadSource 'data\handoff-settings.json') (Join-Path $InstallRoot 'thread-localizer\data\handoff-settings.json')
 Copy-FileChecked (Join-Path $threadSource 'package.json') (Join-Path $InstallRoot 'thread-localizer\package.json')
 Copy-FileChecked (Join-Path $threadSource 'README.md') (Join-Path $InstallRoot 'thread-localizer\README.md')

@@ -42,6 +42,7 @@ test("the installer reuses the official catalog and installs both handoff entrie
   assert.match(installer, /找不到 DeepSeek 官方模型目录/);
   assert.doesNotMatch(installer, /Copy-FileChecked[^\n]+models-deepseek\.json/);
   assert.match(installer, /initialize-handoff\.ps1/);
+  assert.match(installer, /移除旧版累计任务备份模块/);
   assert.match(shortcuts, /任务交接GPT\.lnk/);
   assert.match(shortcuts, /DeepSeek交接\.lnk/);
 });
