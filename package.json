@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Keep Codex desktop task history usable while switching between OpenAI and DeepSeek.",
   "engines": {
-    "node": ">=18"
+    "node": ">=22.13.0"
   },
   "scripts": {
     "test": "npm --prefix work/thread-localizer test",

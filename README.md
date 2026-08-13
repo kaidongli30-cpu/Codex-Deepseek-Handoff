@@ -99,9 +99,12 @@ winget install --id Microsoft.PowerShell --source winget
 node --version
 ```
 
-如果出现类似 `v20...`、`v22...` 或 `v24...` 的版本号，说明已经安装。
+本项目要求 **Node.js 22.13.0 或更高版本**，推荐安装当前的 Node.js 24 LTS。
+例如，显示 `v22.13.0`、更高的 `v22...` 或 `v24...` 都可以使用；
+`v20...` 及更早版本不受支持。
 
-如果提示无法识别 `node`，请到 Node.js 官方网站下载 **LTS（长期支持版）**：
+如果版本过低或提示无法识别 `node`，请到 Node.js 官方网站下载当前的
+**LTS（长期支持版）**：
 
 - [Node.js 官方下载页面](https://nodejs.org/en/download)
 

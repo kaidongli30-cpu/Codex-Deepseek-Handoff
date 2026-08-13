@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Hand off local Codex desktop tasks between OpenAI and DeepSeek through the app-server protocol.",
   "engines": {
-    "node": ">=18"
+    "node": ">=22.13.0"
   },
   "scripts": {
     "test": "node --test",

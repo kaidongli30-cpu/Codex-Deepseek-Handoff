@@ -105,10 +105,12 @@ In PowerShell 7, run:
 node --version
 ```
 
-If it prints something like `v20...`, `v22...`, or `v24...`, it is installed.
+This project requires **Node.js 22.13.0 or newer**. The current Node.js 24 LTS
+release is recommended. Versions such as `v22.13.0`, a newer `v22...`, or
+`v24...` are supported; `v20...` and older versions are not.
 
-If `node` is not recognized, download the **LTS (long-term support)** version
-from the official Node.js website:
+If the installed version is too old or `node` is not recognized, download the
+current **LTS (long-term support)** version from the official Node.js website:
 
 - [Node.js download page](https://nodejs.org/en/download)
 

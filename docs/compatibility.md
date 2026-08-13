@@ -5,7 +5,7 @@
 | Windows | Windows 10/11 | The desktop launcher and shortcut scripts are Windows-specific. |
 | Codex | Current installed desktop build with `app-server` | The schema guard is authoritative; unsupported fields stop the handoff. |
 | App-server | `initialize`, thread list/read/items, fork/start/inject, name set | `experimentalApi: true` is sent during initialization. |
-| Node.js | 18 or newer | Used by the CLI and tests. |
+| Node.js | 22.13.0 or newer; 24 LTS recommended | Required for the built-in `node:sqlite` API used by task discovery and cleanup. |
 | PowerShell | 7 recommended | The launcher can fall back to Windows PowerShell when necessary. |
 | OpenAI | ChatGPT login mode | Existing task model is preserved when known. |
 | DeepSeek | Official Responses API provider | Complete and test the official Codex setup first; the selected slug must exist in its local model catalog. |
