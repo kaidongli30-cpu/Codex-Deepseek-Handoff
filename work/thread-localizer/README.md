@@ -23,8 +23,8 @@ model). A provider switch processes every managed task independently:
 6. verify provider, model, thread source, project path, turn count, item count,
    and visible message count;
 7. normalize DeepSeek reasoning records before an OpenAI task is opened;
-8. archive the previous baton only after the replacement passes verification;
-9. atomically update the task's manifest entry.
+8. atomically point the manifest at the verified replacement;
+9. permanently delete the previous baton through `thread/delete`.
 
 A failure or active turn blocks only that task. Other tasks continue through
 the pipeline. The desktop launcher treats any blocked or failed task as a
@@ -127,12 +127,13 @@ can contain task names and message metadata.
 
 - `capabilities.experimentalApi = true` is always declared at initialization.
 - A task with an active turn or JSONL parse error is never forked.
-- Every handoff creates a timestamped SQLite-consistent backup plus source
-  rollout and session-index copies.
+- Handoffs do not create cumulative task, rollout, or SQLite backups.
 - The tool never edits `state_5.sqlite` or `session_index.jsonl` directly.
 - Source rollouts are never modified.
 - DeepSeek reasoning normalization modifies only the newly created OpenAI
-  target rollout after copying that target to the handoff backup directory.
+  target rollout while the untouched source still exists.
+- A failed target is deleted; a verified replacement is committed before its
+  predecessor is permanently deleted through the official app-server.
 - No command in this pipeline starts a model response.
 - The launcher controls desktop startup, but the migration CLI does not start
   or control the Codex UI.

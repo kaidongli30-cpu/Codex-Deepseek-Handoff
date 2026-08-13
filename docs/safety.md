@@ -3,9 +3,10 @@
 ## What the project changes
 
 The CLI creates a new target thread through the app-server protocol, writes its
-own manifest/report files, and may normalize the newly created target rollout
-after making a backup. The desktop launcher changes only its marked provider
-block in `config.toml`, with a candidate parse and timestamped backup first.
+own manifest/report files, and may normalize only the newly created target
+rollout. The source remains intact until the target passes verification. The
+desktop launcher changes only its marked provider block in `config.toml`, with
+a candidate parse and small timestamped configuration backup first.
 
 ## What it does not change directly
 
@@ -32,6 +33,7 @@ Before making a repository public:
 ## Real task data
 
 Use the repository only for source and safe templates. Treat the Codex home,
-rollouts, reports, backups, and encrypted key directory as private runtime
-state. A Git commit cannot replace a timestamped task backup, and a task backup
-cannot replace a Git commit.
+rollouts, reports, and encrypted key directory as private runtime state. Task
+history is not copied into cumulative backup directories. Successful handoffs
+permanently delete the predecessor only after the replacement is verified;
+Git protects source code, not local chat data.

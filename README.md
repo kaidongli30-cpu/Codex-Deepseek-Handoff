@@ -317,10 +317,11 @@ DeepSeek交接
 
 1. 查找需要交接的任务；
 2. 检查是否已经交接过，防止重复任务；
-3. 备份必要数据；
+3. 创建新的目标任务；
 4. 转换不兼容的记录；
-5. 验证交接结果；
-6. 最后才打开 Codex。
+5. 完整验证交接结果；
+6. 验收成功后删除上一棒旧任务；
+7. 最后才打开 Codex。
 
 任务越多，等待时间可能越长。交接期间再次点击快捷方式不会让它更快，也可能让
 你误以为程序没有反应，所以请耐心等待第一次点击的结果。
@@ -363,8 +364,8 @@ Codex 界面状态，不影响任务上下文。需要时可以手动置顶。
 ### 5. GPT 报 `Invalid input[*].content ... maximum length 0`
 
 这通常说明旧的 DeepSeek 推理记录没有完成兼容处理。当前版本会在
-DeepSeek → GPT 交接时清理新目标中的不兼容 `content`。请保留错误报告和备份，
-不要手动删除源任务记录。详见 [故障排查文档](docs/troubleshooting.md)。
+DeepSeek → GPT 交接时清理新目标中的不兼容 `content`。请保留错误报告，
+不要手动修改任务数据库或 rollout。详见 [故障排查文档](docs/troubleshooting.md)。
 
 ### 6. 使用 DeepSeek 联网搜索后，切回 GPT 报错
 
@@ -400,7 +401,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass `
 - DeepSeek 官方模型目录；
 - 已加密保存的 API key；
 - 任务交接 manifest；
-- 交接报告和备份。
+- 交接报告和 manifest。
 
 ## 默认设置
 
@@ -419,7 +420,8 @@ Responses API。普通用户不需要手动修改 `config.toml`。
 - 不把聊天记录上传到本项目作者的服务器；
 - 不把 API key 写入 Git；
 - 不直接修改 `state_5.sqlite`、`session_index.jsonl` 或源 rollout；
-- 写入前生成 dry-run 报告和时间戳备份；
+- 写入前生成 dry-run 报告，旧任务会保留到新任务完成验收；
+- 交接不再生成累计任务备份，成功后通过官方协议删除上一棒旧任务；
 - 发现当前 Codex 协议不兼容时停止，而不是猜测字段继续操作；
 - 使用交接 manifest 防止同一个任务被重复复制；
 - 使用每用户锁防止重复点击造成多个交接程序同时运行。

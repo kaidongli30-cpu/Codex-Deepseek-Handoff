@@ -5,6 +5,7 @@ import { parseArgs } from "./utils.mjs";
 import { verifyThread } from "./verify-mirror.mjs";
 import { handoffOne, rollingHandoff } from "./handoff-engine.mjs";
 import { batchHandoff, discoverLocalTasks } from "./batch-handoff-engine.mjs";
+import { cleanupGeneratedHistory } from "./cleanup-generated-history.mjs";
 
 function print(value) {
   process.stdout.write(`${JSON.stringify(value, null, 2)}\n`);
@@ -14,7 +15,7 @@ async function main() {
   const { positionals, options } = parseArgs(process.argv.slice(2));
   const command = positionals[0] || "help";
   if (command === "help") {
-    process.stdout.write("用法: node src/cli.mjs schema-check | batch-inventory | batch-handoff-dry-run --target-provider P [--only-task-id ID] | batch-handoff --execute --target-provider P [--only-task-id ID] | handoff-dry-run ... | rolling-handoff-dry-run ... | verify ...\n");
+    process.stdout.write("用法: node src/cli.mjs schema-check | batch-inventory | batch-handoff-dry-run --target-provider P [--only-task-id ID] | batch-handoff --execute --target-provider P [--only-task-id ID] | cleanup-generated-history [--execute] --report-dir PATH | handoff-dry-run ... | rolling-handoff-dry-run ... | verify ...\n");
     return;
   }
   if (command === "schema-check") {
@@ -23,6 +24,13 @@ async function main() {
   }
   if (command === "batch-inventory") {
     print({ type: "batch-inventory", tasks: await discoverLocalTasks() });
+    return;
+  }
+  if (command === "cleanup-generated-history") {
+    print(await cleanupGeneratedHistory({
+      execute: options.execute === true || options.execute === "true",
+      reportDir: options["report-dir"],
+    }));
     return;
   }
   if (command === "batch-handoff-dry-run" || command === "batch-handoff") {

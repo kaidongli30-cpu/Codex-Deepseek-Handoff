@@ -1,7 +1,6 @@
 import fs from "node:fs/promises";
 import { DatabaseSync } from "node:sqlite";
 import { createAppServerClient } from "./appserver-client.mjs";
-import { createTimestampedBackup } from "./backup.mjs";
 import {
   CODEX_HOME,
   DEEPSEEK_MODEL,
@@ -51,7 +50,7 @@ export async function rolloutState(threadId) {
   };
 }
 
-async function normalizeOpenAIRolloutCompatibility(threadId, backupRoot) {
+async function normalizeOpenAIRolloutCompatibility(threadId) {
   const rolloutPath = await findRolloutPath(threadId);
   if (!rolloutPath) throw new Error(`找不到任务 ${threadId} 的 rollout`);
   const parsed = await readJsonl(rolloutPath);
@@ -63,12 +62,9 @@ async function normalizeOpenAIRolloutCompatibility(threadId, backupRoot) {
     return {
       rolloutPath,
       ...normalization,
-      backupPath: null,
       sha256After: await sha256File(rolloutPath),
     };
   }
-  const backupPath = `${backupRoot}\\target-rollout-before-normalize.jsonl`;
-  await fs.copyFile(rolloutPath, backupPath);
   const temporaryPath = `${rolloutPath}.normalize-${process.pid}.tmp`;
   const text = `${normalization.records.map((record) => JSON.stringify(record.value)).join("\n")}\n`;
   await fs.writeFile(temporaryPath, text, "utf8");
@@ -76,7 +72,6 @@ async function normalizeOpenAIRolloutCompatibility(threadId, backupRoot) {
   return {
     rolloutPath,
     ...normalization,
-    backupPath,
     sha256After: await sha256File(rolloutPath),
   };
 }
@@ -178,7 +173,6 @@ export async function handoffOne(options) {
   if (!options.execute) return { type: "handoff-dry-run", plan };
   if (!plan.safeToProceed) throw new Error("handoff dry-run 未通过：源任务正在运行、rollout 有错误，或相同交接已经执行");
 
-  const backup = await createTimestampedBackup({ sourceRolloutPath: plan.source.rolloutPath });
   const client = await createAppServerClient({
     cwd: PROJECT_CWD,
     configOverrides: appServerProviderOverrides(
@@ -226,11 +220,11 @@ export async function handoffOne(options) {
     } catch (error) {
       if (targetThreadId) {
         try {
-          await client.request("thread/archive", { threadId: targetThreadId });
+          await client.request("thread/delete", { threadId: targetThreadId });
         } catch (cleanupError) {
           const original = error instanceof Error ? error.message : String(error);
           const cleanup = cleanupError instanceof Error ? cleanupError.message : String(cleanupError);
-          throw new Error(`${original}；失败目标 ${targetThreadId} 自动归档也失败: ${cleanup}`);
+          throw new Error(`${original}；失败目标 ${targetThreadId} 自动删除也失败: ${cleanup}`);
         }
       }
       throw error;
@@ -255,23 +249,27 @@ export async function handoffOne(options) {
     isPinned: plan.target.isPinned && pinning.supported ? Boolean(targetDatabase?.is_pinned) : true,
   };
   if (!Object.values(checks).every(Boolean)) {
+    await deleteThread(targetThreadId, plan.target.provider, plan.target.model);
     throw new Error(`handoff 验收失败: ${JSON.stringify(checks)}`);
   }
 
-  const normalization = plan.target.provider === "openai"
-    ? await normalizeOpenAIRolloutCompatibility(targetThreadId, backup.backupRoot)
-    : null;
-  if (normalization && normalization.normalizedReasoningCount !== plan.target.expectedReasoningNormalizations) {
-    throw new Error(`推理字段清洗数量与 dry-run 不一致：预期 ${plan.target.expectedReasoningNormalizations}，实际 ${normalization.normalizedReasoningCount}`);
-  }
-  if (normalization && normalization.normalizedWebSearchCallIdCount !== plan.target.expectedWebSearchCallIdNormalizations) {
-    throw new Error(`联网搜索调用 ID 清洗数量与 dry-run 不一致：预期 ${plan.target.expectedWebSearchCallIdNormalizations}，实际 ${normalization.normalizedWebSearchCallIdCount}`);
-  }
-  if (normalization && normalization.normalizedWebSearchEventReferenceCount !== plan.target.expectedWebSearchEventReferenceNormalizations) {
-    throw new Error(`联网搜索事件引用清洗数量与 dry-run 不一致：预期 ${plan.target.expectedWebSearchEventReferenceNormalizations}，实际 ${normalization.normalizedWebSearchEventReferenceCount}`);
-  }
-  if (normalization && normalization.totalNormalizedCount > 0 && !normalization.backupPath) {
-    throw new Error("兼容字段已被修改，但没有生成清洗前备份");
+  let normalization = null;
+  try {
+    normalization = plan.target.provider === "openai"
+      ? await normalizeOpenAIRolloutCompatibility(targetThreadId)
+      : null;
+    if (normalization && normalization.normalizedReasoningCount !== plan.target.expectedReasoningNormalizations) {
+      throw new Error(`推理字段清洗数量与 dry-run 不一致：预期 ${plan.target.expectedReasoningNormalizations}，实际 ${normalization.normalizedReasoningCount}`);
+    }
+    if (normalization && normalization.normalizedWebSearchCallIdCount !== plan.target.expectedWebSearchCallIdNormalizations) {
+      throw new Error(`联网搜索调用 ID 清洗数量与 dry-run 不一致：预期 ${plan.target.expectedWebSearchCallIdNormalizations}，实际 ${normalization.normalizedWebSearchCallIdCount}`);
+    }
+    if (normalization && normalization.normalizedWebSearchEventReferenceCount !== plan.target.expectedWebSearchEventReferenceNormalizations) {
+      throw new Error(`联网搜索事件引用清洗数量与 dry-run 不一致：预期 ${plan.target.expectedWebSearchEventReferenceNormalizations}，实际 ${normalization.normalizedWebSearchEventReferenceCount}`);
+    }
+  } catch (error) {
+    await deleteThread(targetThreadId, plan.target.provider, plan.target.model);
+    throw error;
   }
 
   const entry = {
@@ -287,7 +285,7 @@ export async function handoffOne(options) {
     targetName: plan.target.name,
     cwd: plan.target.cwd,
     handedOffAt: nowIso(),
-    backupRoot: backup.backupRoot,
+    backupRoot: null,
     checks,
     pinning,
     normalization: normalization
@@ -297,7 +295,7 @@ export async function handoffOne(options) {
           normalizedWebSearchCallIdCount: normalization.normalizedWebSearchCallIdCount,
           normalizedWebSearchEventReferenceCount: normalization.normalizedWebSearchEventReferenceCount,
           targetRolloutSha256After: normalization.sha256After,
-          backupPath: normalization.backupPath,
+          backupPath: null,
         }
       : {
           applied: false,
@@ -317,31 +315,24 @@ export async function handoffOne(options) {
       handoffs: [...(manifest.handoffs || []), entry],
     });
   }
-  return { type: "handed-off", plan, backup, entry, verification, targetDatabase };
+  return { type: "handed-off", plan, backup: null, entry, verification, targetDatabase };
 }
 
-export async function archiveTestThread(threadId, provider, model = null) {
-  const schema = await loadAndValidateSchema();
+export async function deleteThread(threadId, provider, model = null) {
   const client = await createAppServerClient({
     cwd: PROJECT_CWD,
     configOverrides: appServerProviderOverrides(provider, model),
   });
   try {
-    const row = stateRow(threadId);
-    if (row?.is_pinned && schema.threadMetadata.pinning.supported) {
-      const { method, field } = schema.threadMetadata.pinning;
-      await client.request(method, { threadId, [field]: false });
-    }
-    await client.request("thread/archive", { threadId });
+    await client.request("thread/delete", { threadId });
   } finally {
     await client.close();
   }
   const after = stateRow(threadId);
   return {
     threadId,
-    archived: Boolean(after?.archived),
-    isPinnedAfterArchive: Boolean(after?.is_pinned),
-    recoverableWith: "thread/unarchive",
+    deleted: after === null,
+    recoverableWith: null,
   };
 }
 
@@ -377,11 +368,9 @@ export async function rollingHandoff({
   });
   if (!execute || result.type !== "handed-off") return result;
 
-  const archivedSource = await archiveTestThread(sourceThreadId, sourceProvider, manifest.currentModel || null);
-  if (!archivedSource.archived) throw new Error(`新任务已创建，但上一棒 ${sourceThreadId} 未能归档`);
   const refreshed = await readManifest(false);
   const handoffs = refreshed.manifest.handoffs || [];
-  if (handoffs.length) handoffs[handoffs.length - 1] = { ...handoffs[handoffs.length - 1], sourceArchived: true };
+  if (handoffs.length) handoffs[handoffs.length - 1] = { ...handoffs[handoffs.length - 1], sourceDeleted: false };
   await atomicWriteJson(refreshed.manifestPath, {
     ...refreshed.manifest,
     currentThreadId: result.entry.targetThreadId,
@@ -390,5 +379,15 @@ export async function rollingHandoff({
     handoffs,
     updatedAt: nowIso(),
   });
-  return { ...result, archivedSource };
+  const deletedSource = await deleteThread(sourceThreadId, sourceProvider, manifest.currentModel || null);
+  if (!deletedSource.deleted) throw new Error(`新任务已创建，但上一棒 ${sourceThreadId} 未能删除`);
+  const committed = await readManifest(false);
+  const committedHandoffs = committed.manifest.handoffs || [];
+  if (committedHandoffs.length) committedHandoffs[committedHandoffs.length - 1] = {
+    ...committedHandoffs[committedHandoffs.length - 1],
+    sourceDeleted: true,
+    sourceDeletedAt: nowIso(),
+  };
+  await atomicWriteJson(committed.manifestPath, { ...committed.manifest, handoffs: committedHandoffs, updatedAt: nowIso() });
+  return { ...result, deletedSource };
 }

@@ -34,6 +34,7 @@ export const REQUIRED_METHODS = [
   "thread/read",
   "thread/items/list",
   "thread/fork",
+  "thread/delete",
   "thread/start",
   "thread/inject_items",
   "thread/name/set",

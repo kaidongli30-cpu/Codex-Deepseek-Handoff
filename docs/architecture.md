@@ -15,13 +15,13 @@ discoverLocalTasks + settings filters
    ↓
 dry-run report (no writes)
    ↓
-backup + thread/fork
+thread/fork
    ↓
 optional normalization of the new target rollout
    ↓
 thread/read(includeTurns=true) + thread/items/list
    ↓
-manifest update and old baton archive
+manifest update and verified old baton delete
 ```
 
 The implementation tries `thread/fork` first. If the installed protocol does
@@ -45,8 +45,8 @@ only when no task failed or remained blocked. It never sends a user prompt.
 ## Compatibility normalization
 
 DeepSeek Responses records can contain reasoning `content` arrays that the
-OpenAI task schema rejects. The target rollout is copied into the handoff
-backup first, then the normalizer changes only the new OpenAI target:
+OpenAI task schema rejects. The normalizer changes only the newly forked
+OpenAI target while the original source task still exists:
 
 - reasoning `content` becomes `null`;
 - DeepSeek web-search IDs are mapped from `call_*` to `ws_*` and matching
@@ -54,13 +54,17 @@ backup first, then the normalizer changes only the new OpenAI target:
 - ordinary function-call IDs are not changed;
 - collisions and missing IDs stop the handoff instead of guessing.
 
-## Schema guard and backups
+## Schema guard and transaction boundary
 
 Initialization declares `capabilities.experimentalApi = true`. The schema guard
 uses the selected Codex executable, caches a versioned schema under the Codex
 home, and records the executable signature and request-schema hash. A stale or
 missing cache is regenerated; an incompatible protocol stops before mutation.
 
-Before writes, the backup module makes a SQLite-consistent snapshot and copies
-the relevant session index and source rollout. The tool does not update
-`state_5.sqlite`, `session_index.jsonl`, or a source rollout in place.
+The tool does not copy the task database or rollouts into cumulative backup
+directories. It leaves the source task untouched until the replacement has
+passed provider, model, count, path, and compatibility checks. A failed target
+is deleted through `thread/delete`; after success, the manifest points to the
+replacement and the old source is deleted through the same official protocol.
+The tool never updates `state_5.sqlite`, `session_index.jsonl`, or a source
+rollout in place.

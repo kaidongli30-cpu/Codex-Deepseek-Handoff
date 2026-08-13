@@ -53,3 +53,12 @@ test("configuration bootstrap is marker-scoped and validates before writing", ()
   assert.match(initializer, /Test-CandidateConfig -Candidate \$candidate/);
   assert.match(initializer, /config\..+before-handoff-install\.toml/);
 });
+
+test("handoff verifies replacements then deletes predecessors without cumulative task backups", () => {
+  const handoff = fs.readFileSync(path.join(toolRoot, "src", "handoff-engine.mjs"), "utf8");
+  const batch = fs.readFileSync(path.join(toolRoot, "src", "batch-handoff-engine.mjs"), "utf8");
+  assert.doesNotMatch(handoff, /createTimestampedBackup/);
+  assert.match(handoff, /client\.request\("thread\/delete"/);
+  assert.doesNotMatch(batch, /archiveTestThread|thread\/archive/);
+  assert.match(batch, /sourceDeleted: true/);
+});

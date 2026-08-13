@@ -13,15 +13,15 @@ no-ops while a handoff is running.
 This means an OpenAI target received a DeepSeek reasoning record with an array
 content field. A current handoff normalizes newly created OpenAI targets to
 `content: null`. If the error refers to an older target, do not edit the source
-rollout by hand. Restore from the timestamped handoff backup or repeat the
-handoff from the current provider baton after a dry run.
+rollout by hand. The failed replacement is deleted while the source remains;
+repeat the handoff from that source after inspecting the dry-run report.
 
 ## Web-search records fail after switching back
 
 DeepSeek web-search calls can use `call_*` identifiers while OpenAI expects
 `ws_*`. The normalizer updates the linked `web_search_end.call_id` values and
-stops on collisions. Keep the original report and backup when reporting a new
-shape; do not delete the records to make a task appear to load.
+stops on collisions. Keep the original report when reporting a new shape; do
+not delete records to make a task appear to load.
 
 ## The schema path is missing
 
@@ -45,6 +45,8 @@ real catalog to validate the selected model before changing modes.
 
 ## Recovery
 
-Keep the source task and its backup. Git rollback handles source-code changes;
-the handoff backup handles local task data. See [safety.md](safety.md) and the
-repository's `CONTRIBUTING.md` for the exact recovery boundaries.
+During a handoff, the source remains untouched until the replacement is fully
+verified. A failed replacement is deleted. After a successful handoff the old
+source is permanently deleted, so there is no accumulating task backup or
+archived predecessor. Git rollback handles source-code changes only. See
+[safety.md](safety.md) for the exact boundary.

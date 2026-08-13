@@ -9,7 +9,7 @@ import {
   PROJECT_CWD,
   REPORT_DIR,
 } from "./constants.mjs";
-import { archiveTestThread, handoffOne, rolloutState } from "./handoff-engine.mjs";
+import { deleteThread, handoffOne, rolloutState } from "./handoff-engine.mjs";
 import {
   mapProjectCwd,
   normalizeCwd,
@@ -138,9 +138,13 @@ function mergeDiscoveredTasks(manifest, discovered, legacyManifest) {
   const legacyCurrentId = legacyManifest?.currentThreadId || null;
   const legacyRootId = legacyManifest?.handoffs?.[0]?.sourceThreadId || legacyCurrentId;
   let importedLegacy = next.legacyImport;
+  const predecessorIds = new Set(tasks.flatMap((task) => (
+    (task.handoffs || []).map((handoff) => handoff.sourceThreadId).filter(Boolean)
+  )));
 
   for (const item of discovered) {
     if (!item.managed || item.excludedReason) continue;
+    if (predecessorIds.has(item.id)) continue;
     let task = tasks.find((candidate) => candidate.currentThreadId === item.id) || null;
     if (!task && item.id === legacyCurrentId) {
       task = tasks.find((candidate) => candidate.stableTaskId === legacyRootId) || null;
@@ -213,9 +217,22 @@ export async function buildBatchHandoffPlan({ targetProvider, onlyTaskId = null 
     discoverLocalTasks(settings),
   ]);
   const nextManifest = mergeDiscoveredTasks(manifest, discovered, legacyManifest);
+  const predecessorIds = new Set(nextManifest.tasks.flatMap((task) => (
+    (task.handoffs || []).map((handoff) => handoff.sourceThreadId).filter(Boolean)
+  )));
   const items = [];
 
   for (const discoveredTask of discovered) {
+    if (predecessorIds.has(discoveredTask.id)) {
+      items.push({
+        stableTaskId: null,
+        sourceThreadId: discoveredTask.id,
+        displayName: discoveredTask.displayName,
+        action: "skip",
+        reason: "retired-handoff-predecessor",
+      });
+      continue;
+    }
     if (!discoveredTask.managed) {
       items.push({
         stableTaskId: null,
@@ -400,11 +417,6 @@ export async function batchHandoff({ targetProvider, onlyTaskId = null, execute 
         recordManifest: false,
         emitDryRun: false,
       });
-      const archivedSource = await archiveTestThread(item.sourceThreadId, item.sourceProvider, item.sourceModel);
-      if (!archivedSource.archived) {
-        await archiveTestThread(result.entry.targetThreadId, item.targetProvider, item.targetModel);
-        throw new Error(`目标已创建，但源任务 ${item.sourceThreadId} 未能归档；目标已回滚归档`);
-      }
       task.currentThreadId = result.entry.targetThreadId;
       task.currentProvider = item.targetProvider;
       task.currentModel = item.targetModel;
@@ -421,8 +433,20 @@ export async function batchHandoff({ targetProvider, onlyTaskId = null, execute 
       task.lastError = null;
       task.handoffs = [
         ...(task.handoffs || []),
-        { ...result.entry, sourceArchived: true },
+        { ...result.entry, sourceDeleted: false },
       ];
+      replaceTask(workingManifest, task);
+      workingManifest.updatedAt = nowIso();
+      await atomicWriteJson(BATCH_HANDOFF_MANIFEST_PATH, workingManifest);
+      const deletedSource = await deleteThread(item.sourceThreadId, item.sourceProvider, item.sourceModel);
+      if (!deletedSource.deleted) {
+        throw new Error(`目标已创建并写入清单，但源任务 ${item.sourceThreadId} 未能删除`);
+      }
+      task.handoffs[task.handoffs.length - 1] = {
+        ...task.handoffs[task.handoffs.length - 1],
+        sourceDeleted: true,
+        sourceDeletedAt: nowIso(),
+      };
       replaceTask(workingManifest, task);
       workingManifest.updatedAt = nowIso();
       await atomicWriteJson(BATCH_HANDOFF_MANIFEST_PATH, workingManifest);
@@ -439,7 +463,8 @@ export async function batchHandoff({ targetProvider, onlyTaskId = null, execute 
         checks: result.entry.checks,
         normalization: result.entry.normalization,
         pinning: result.entry.pinning,
-        backupRoot: result.entry.backupRoot,
+        sourceDeleted: true,
+        backupRoot: null,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

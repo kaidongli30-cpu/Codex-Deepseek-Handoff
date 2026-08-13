@@ -383,8 +383,8 @@ directly modify Codex databases or rollout files.
 
 This usually means an old DeepSeek reasoning record was not converted. The
 current version cleans the incompatible `content` field on new targets during
-the DeepSeek → GPT handoff. Keep the error report and backup; do not manually
-delete source task records. See the [troubleshooting guide](docs/troubleshooting.md).
+the DeepSeek → GPT handoff. Keep the error report; do not manually modify task
+databases or rollouts. See the [troubleshooting guide](docs/troubleshooting.md).
 
 ### 6. Switching back to GPT fails after DeepSeek web search
 
@@ -424,7 +424,7 @@ shortcuts, and the program files installed by this project. These are kept:
 - DeepSeek's official model catalog;
 - the encrypted API key;
 - handoff manifests;
-- handoff reports and backups.
+- handoff reports and manifests.
 
 ## Defaults
 
@@ -445,7 +445,10 @@ This project calls the Codex `app-server` already installed on your machine:
 - it does not write API keys into Git;
 - it does not directly modify `state_5.sqlite`, `session_index.jsonl`, or source
   rollouts;
-- it generates dry-run reports and timestamped backups before writes;
+- it generates a dry-run before writes and keeps the source until the new task
+  passes verification;
+- it does not accumulate task backups and permanently deletes the predecessor
+  through the official protocol after a successful handoff;
 - it stops when the installed Codex protocol is incompatible, instead of
   guessing fields and continuing;
 - a handoff manifest prevents the same task from being copied twice;
