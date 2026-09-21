@@ -2,6 +2,14 @@
 
 <p align="center"><a href="README.md">简体中文</a> | <b>English</b> | <a href="README.ja.md">日本語</a></p>
 
+> [!IMPORTANT]
+> **This project was discontinued and archived on September 21, 2026.** Its
+> last successful validation used Codex CLI `0.151.0-alpha.7.2`. Later Codex
+> releases may rewrite `config.toml`, removing the managed configuration this
+> project requires and preventing its shortcuts from starting. The repository
+> remains available for learning and historical reference, but installation on
+> current Codex releases or use for important work is not recommended.
+
 Keep working on the same task in the Codex desktop app with GPT and DeepSeek.
 
 > This is a local task-handoff tool that currently supports Windows only. If

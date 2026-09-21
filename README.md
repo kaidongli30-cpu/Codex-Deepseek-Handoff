@@ -2,6 +2,12 @@
 
 <p align="center"><b>简体中文</b> | <a href="README.en.md">English</a> | <a href="README.ja.md">日本語</a></p>
 
+> [!IMPORTANT]
+> **项目已于 2026 年 9 月 21 日停止维护并归档。** 本项目最后一次成功验证基于
+> Codex CLI `0.151.0-alpha.7.2`。后续 Codex 版本可能重写 `config.toml`，从而删除
+> 本项目依赖的受管配置并导致快捷方式无法启动。仓库保留用于学习和历史参考，
+> 不建议在当前 Codex 版本上直接安装或用于重要任务。
+
 在 Codex 桌面应用中，让 GPT 和 DeepSeek 接着同一个任务继续聊。
 
 > 这是一个目前只支持 Windows 的本地任务交接工具。第一次使用命令行也没关系，
